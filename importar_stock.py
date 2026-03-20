@@ -2,8 +2,14 @@ import pandas as pd
 import requests
 import re
 
-API = "http://127.0.0.1:8000"
+API = "https://inventory-api-production-6d9d.up.railway.app"
 EXCEL_FILE = "Stock.xlsx"
+USERNAME = "admin"
+PASSWORD = "1244" 
+
+def get_token():
+    res = requests.post(f"{API}/token", data={"username": USERNAME, "password": PASSWORD})
+    return res.json()["access_token"]
 
 def make_sku(producto, tamano):
     base = str(producto).strip().upper()
@@ -13,6 +19,9 @@ def make_sku(producto, tamano):
         suffix = re.sub(r'\s+', '', str(tamano).strip().upper())
         return f"{base}-{suffix}"
     return base
+
+token = get_token()
+headers = {"Authorization": f"Bearer {token}"}
 
 df = pd.read_excel(EXCEL_FILE, sheet_name="Hoja1")
 df.columns = [c.strip() for c in df.columns]
@@ -28,7 +37,7 @@ for _, row in df.iterrows():
     payload = {"name": nombre, "sku": sku, "stock": stock}
 
     try:
-        res = requests.post(f"{API}/products/", json=payload)
+        res = requests.post(f"{API}/products/", json=payload, headers=headers)
         if res.status_code == 200:
             print(f"  ✓ {nombre} ({sku}) — stock: {stock}")
             ok += 1

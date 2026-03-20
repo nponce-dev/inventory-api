@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inventario</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f3ee;
+    --surface: #ffffff;
+    --border: #e2ddd6;
+    --text: #1a1814;
+    --muted: #8a8478;
+    --accent: #2d5a3d;
+    --accent-light: #e8f0ea;
+    --accent-hover: #234a31;
+    --danger: #c0392b;
+    --danger-light: #fdf0ee;
+    --warning: #b8860b;
+    --warning-light: #fdf8e8;
+    --mono: 'DM Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* LOGIN */
+  #login-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+
+  .login-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 2.5rem;
+    width: 100%;
+    max-width: 360px;
+  }
+
+  .login-logo {
+    font-family: var(--mono);
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--accent);
+    margin-bottom: 0.5rem;
+  }
+
+  .login-subtitle {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 2rem;
+  }
+
+  .login-card .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-bottom: 12px;
+  }
+
+  .login-card label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .4px;
+  }
+
+  .login-card input {
+    font-family: var(--sans);
+    font-size: 14px;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 9px 12px;
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+    width: 100%;
+  }
+
+  .login-card input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(45,90,61,.1);
+    background: var(--surface);
+  }
+
+  .login-error {
+    font-size: 12px;
+    color: var(--danger);
+    margin-bottom: 10px;
+    min-height: 16px;
+  }
+
+  .btn-login {
+    width: 100%;
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 500;
+    padding: 10px;
+    border-radius: 7px;
+    border: none;
+    background: var(--accent);
+    color: white;
+    cursor: pointer;
+    transition: background .15s;
+    margin-top: 4px;
+  }
+  .btn-login:hover { background: var(--accent-hover); }
+
+  /* APP */
+  #app-screen { display: none; }
+
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--accent);
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .api-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--muted);
+    font-family: var(--mono);
+  }
+
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #ccc; transition: background .3s; }
+  .status-dot.ok { background: #4caf50; }
+  .status-dot.err { background: var(--danger); }
+
+  .btn-logout {
+    font-family: var(--sans);
+    font-size: 12px;
+    color: var(--muted);
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 10px;
+    cursor: pointer;
+    transition: color .15s, border-color .15s;
+  }
+  .btn-logout:hover { color: var(--danger); border-color: var(--danger); }
+
+  nav {
+    display: flex;
+    gap: 2px;
+    padding: 0 2rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav-btn {
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--muted);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: color .15s, border-color .15s;
+    white-space: nowrap;
+  }
+  .nav-btn:hover { color: var(--text); }
+  .nav-btn.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 500; }
+
+  main { max-width: 960px; margin: 0 auto; padding: 2rem; }
+
+  .section { display: none; }
+  .section.active { display: block; animation: fadeIn .2s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  .section-header { margin-bottom: 1.5rem; }
+  .section-header h2 { font-size: 20px; font-weight: 500; letter-spacing: -0.3px; }
+  .section-header p { font-size: 13px; color: var(--muted); margin-top: 3px; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.5rem; margin-bottom: 1rem; }
+
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 1.5rem; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; }
+  .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+  .stat-value { font-family: var(--mono); font-size: 26px; font-weight: 500; color: var(--text); }
+  .stat-value.red { color: var(--danger); }
+
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); padding: 8px 12px; border-bottom: 1px solid var(--border); }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--text); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg); }
+
+  .sku-tag { font-family: var(--mono); font-size: 11px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 2px 6px; color: var(--muted); }
+
+  .stock-badge { font-family: var(--mono); font-size: 12px; font-weight: 500; padding: 2px 8px; border-radius: 20px; display: inline-block; }
+  .stock-ok { background: var(--accent-light); color: var(--accent); }
+  .stock-low { background: var(--warning-light); color: var(--warning); }
+  .stock-out { background: var(--danger-light); color: var(--danger); }
+
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+
+  label { font-size: 12px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+
+  input { font-family: var(--sans); font-size: 14px; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 7px; padding: 9px 12px; outline: none; transition: border-color .15s, box-shadow .15s; }
+  input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(45,90,61,.1); background: var(--surface); }
+
+  .btn { font-family: var(--sans); font-size: 13px; font-weight: 500; padding: 9px 18px; border-radius: 7px; border: none; cursor: pointer; transition: background .15s, transform .1s; }
+  .btn:active { transform: scale(.98); }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { background: var(--bg); }
+
+  .form-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+
+  #toast { position: fixed; bottom: 24px; right: 24px; background: var(--text); color: white; font-size: 13px; padding: 10px 16px; border-radius: 8px; opacity: 0; transform: translateY(8px); transition: opacity .2s, transform .2s; pointer-events: none; z-index: 999; max-width: 300px; }
+  #toast.show { opacity: 1; transform: none; }
+  #toast.success { background: var(--accent); }
+  #toast.error { background: var(--danger); }
+
+  .empty-state { text-align: center; padding: 3rem 1rem; color: var(--muted); font-size: 13px; }
+  .search-bar { display: flex; gap: 8px; margin-bottom: 1rem; }
+  .search-bar input { flex: 1; }
+  .divider { height: 1px; background: var(--border); margin: 1.5rem 0; }
+
+  @media (max-width: 600px) {
+    .stats { grid-template-columns: 1fr 1fr; }
+    .form-grid, .form-grid.three { grid-template-columns: 1fr; }
+    main { padding: 1rem; }
+    header { padding: 0 1rem; }
+    nav { padding: 0 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">📦 inventario</div>
+    <div class="login-subtitle">Ingresá para continuar</div>
+    <div class="form-group">
+      <label>Usuario</label>
+      <input type="text" id="login-user" placeholder="usuario" autocomplete="username">
+    </div>
+    <div class="form-group">
+      <label>Contraseña</label>
+      <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter') doLogin()">
+    </div>
+    <div class="login-error" id="login-error"></div>
+    <button class="btn-login" onclick="doLogin()">Ingresar</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-screen">
+  <header>
+    <span class="logo">📦 inventario</span>
+    <div class="header-right">
+      <div class="api-status">
+        <span class="status-dot" id="status-dot"></span>
+        <span id="status-text">conectando...</span>
+      </div>
+      <button class="btn-logout" onclick="logout()">Cerrar sesión</button>
+    </div>
+  </header>
+
+  <nav>
+    <button class="nav-btn active" onclick="showSection('stock', this)">Stock</button>
+    <button class="nav-btn" onclick="showSection('agregar', this)">Agregar producto</button>
+    <button class="nav-btn" onclick="showSection('venta', this)">Registrar venta</button>
+    <button class="nav-btn" onclick="showSection('historial', this)">Historial</button>
+  </nav>
+
+  <main>
+
+    <!-- STOCK -->
+    <div class="section active" id="sec-stock">
+      <div class="section-header">
+        <h2>Stock actual</h2>
+        <p>Todos los productos y su disponibilidad</p>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="stat-label">Total productos</div><div class="stat-value" id="stat-total">—</div></div>
+        <div class="stat"><div class="stat-label">Stock bajo (&lt;10)</div><div class="stat-value red" id="stat-low">—</div></div>
+        <div class="stat"><div class="stat-label">Sin stock</div><div class="stat-value red" id="stat-out">—</div></div>
+      </div>
+      <div class="card">
+        <div class="search-bar">
+          <input type="text" id="search-input" placeholder="Buscar por nombre o SKU..." oninput="filterProducts()">
+          <button class="btn btn-secondary" onclick="loadProducts()">↺ Actualizar</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Nombre</th><th>SKU</th><th>Stock</th><th></th></tr></thead>
+            <tbody id="products-tbody"><tr><td colspan="4" class="empty-state">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- AGREGAR -->
+    <div class="section" id="sec-agregar">
+      <div class="section-header">
+        <h2>Agregar producto</h2>
+        <p>Cargá un producto nuevo al inventario</p>
+      </div>
+      <div class="card">
+        <div class="form-grid three">
+          <div class="form-group"><label>Nombre del producto</label><input type="text" id="add-name" placeholder="Ej: Medialunas"></div>
+          <div class="form-group"><label>SKU / Código</label><input type="text" id="add-sku" placeholder="Ej: MED-001"></div>
+          <div class="form-group"><label>Stock inicial</label><input type="number" id="add-stock" placeholder="0" min="0"></div>
+        </div>
+        <div class="form-footer">
+          <span style="font-size:12px;color:var(--muted)">El SKU debe ser único por producto</span>
+          <button class="btn btn-primary" onclick="addProduct()">Agregar producto</button>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="section-header">
+        <h2>Actualizar stock</h2>
+        <p>Modificá el stock o datos de un producto existente</p>
+      </div>
+      <div class="card">
+        <div class="form-grid three">
+          <div class="form-group"><label>ID del producto</label><input type="number" id="upd-id" placeholder="Ej: 1" min="1"></div>
+          <div class="form-group"><label>Nombre</label><input type="text" id="upd-name" placeholder="Nuevo nombre"></div>
+          <div class="form-group"><label>SKU</label><input type="text" id="upd-sku" placeholder="Nuevo SKU"></div>
+          <div class="form-group"><label>Nuevo stock</label><input type="number" id="upd-stock" placeholder="0" min="0"></div>
+        </div>
+        <div class="form-footer">
+          <span style="font-size:12px;color:var(--muted)">Podés ver los IDs en la pestaña Stock</span>
+          <button class="btn btn-primary" onclick="updateProduct()">Actualizar producto</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- VENTA -->
+    <div class="section" id="sec-venta">
+      <div class="section-header">
+        <h2>Registrar venta</h2>
+        <p>El stock se descuenta automáticamente</p>
+      </div>
+      <div class="card">
+        <div class="form-grid">
+          <div class="form-group"><label>SKU del producto</label><input type="text" id="sale-sku" placeholder="Ej: MED-001"></div>
+          <div class="form-group"><label>Cantidad vendida</label><input type="number" id="sale-qty" placeholder="1" min="1"></div>
+        </div>
+        <div class="form-footer">
+          <span style="font-size:12px;color:var(--muted)">La venta descuenta el stock en tiempo real</span>
+          <button class="btn btn-primary" onclick="registerSale()">Registrar venta</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTORIAL -->
+    <div class="section" id="sec-historial">
+      <div class="section-header">
+        <h2>Historial de ventas</h2>
+        <p>Todas las ventas registradas</p>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Producto</th><th>Cantidad</th></tr></thead>
+            <tbody id="sales-tbody"><tr><td colspan="3" class="empty-state">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+        <div style="margin-top:1rem;text-align:right">
+          <button class="btn btn-secondary" onclick="loadSales()">↺ Actualizar</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  const API = 'https://inventory-api-production-6d9d.up.railway.app'
+  let allProducts = [];
+
+  function getToken() { return localStorage.getItem('token'); }
+  function authHeaders() { return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() }; }
+
+  // --- LOGIN ---
+  async function doLogin() {
+    const username = document.getElementById('login-user').value.trim();
+    const password = document.getElementById('login-pass').value;
+    document.getElementById('login-error').textContent = '';
+
+    if (!username || !password) {
+      document.getElementById('login-error').textContent = 'Completá usuario y contraseña';
+      return;
+    }
+
+    try {
+      const res = await fetch(API + '/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        localStorage.setItem('token', data.access_token);
+        showApp();
+      } else {
+        document.getElementById('login-error').textContent = 'Usuario o contraseña incorrectos';
+      }
+    } catch {
+      document.getElementById('login-error').textContent = 'No se pudo conectar con la API';
+    }
+  }
+
+  function logout() {
+    localStorage.removeItem('token');
+    document.getElementById('app-screen').style.display = 'none';
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('login-pass').value = '';
+  }
+
+  function showApp() {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app-screen').style.display = 'block';
+    checkStatus();
+    loadProducts();
+  }
+
+  // --- AUTO LOGIN si ya hay token ---
+  if (getToken()) showApp();
+
+  // --- NAV ---
+  function showSection(name, btn) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('sec-' + name).classList.add('active');
+    btn.classList.add('active');
+    if (name === 'stock') loadProducts();
+    if (name === 'historial') loadSales();
+  }
+
+  // --- TOAST ---
+  function toast(msg, type = 'success') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'show ' + type;
+    setTimeout(() => t.className = '', 3000);
+  }
+
+  // --- API STATUS ---
+  async function checkStatus() {
+    try {
+      const res = await fetch(API + '/products/', { headers: authHeaders() });
+      const ok = res.status !== 0;
+      document.getElementById('status-dot').className = 'status-dot ' + (ok ? 'ok' : 'err');
+      document.getElementById('status-text').textContent = ok ? 'API conectada' : 'API desconectada';
+    } catch {
+      document.getElementById('status-dot').className = 'status-dot err';
+      document.getElementById('status-text').textContent = 'API desconectada';
+    }
+  }
+
+  // --- PRODUCTS ---
+  async function loadProducts() {
+    try {
+      const res = await fetch(API + '/products/', { headers: authHeaders() });
+      if (res.status === 401) { logout(); return; }
+      allProducts = await res.json();
+      renderProducts(allProducts);
+      updateStats(allProducts);
+    } catch {
+      document.getElementById('products-tbody').innerHTML =
+        '<tr><td colspan="4" class="empty-state">No se pudo conectar con la API</td></tr>';
+    }
+  }
+
+  function updateStats(products) {
+    document.getElementById('stat-total').textContent = products.length;
+    document.getElementById('stat-low').textContent = products.filter(p => p.stock > 0 && p.stock < 10).length;
+    document.getElementById('stat-out').textContent = products.filter(p => p.stock === 0).length;
+  }
+
+  function renderProducts(products) {
+    const tbody = document.getElementById('products-tbody');
+    if (!products.length) {
+      tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No hay productos cargados todavía</td></tr>';
+      return;
+    }
+    tbody.innerHTML = products.map(p => {
+      const badge = p.stock === 0
+        ? `<span class="stock-badge stock-out">Sin stock</span>`
+        : p.stock < 10
+          ? `<span class="stock-badge stock-low">${p.stock}</span>`
+          : `<span class="stock-badge stock-ok">${p.stock}</span>`;
+      return `<tr>
+        <td>${p.name} <span style="font-size:11px;color:var(--muted)">#${p.id}</span></td>
+        <td><span class="sku-tag">${p.sku}</span></td>
+        <td>${badge}</td>
+        <td><button class="btn btn-secondary" style="padding:4px 10px;font-size:12px;color:var(--danger);border-color:var(--danger)" onclick="deleteProduct(${p.id}, '${p.name}')">Eliminar</button></td>
+      </tr>`;
+    }).join('');
+  }
+
+  function filterProducts() {
+    const q = document.getElementById('search-input').value.toLowerCase();
+    renderProducts(allProducts.filter(p =>
+      p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q)
+    ));
+  }
+
+  async function addProduct() {
+    const name = document.getElementById('add-name').value.trim();
+    const sku = document.getElementById('add-sku').value.trim();
+    const stock = parseInt(document.getElementById('add-stock').value);
+    if (!name || !sku || isNaN(stock)) { toast('Completá todos los campos', 'error'); return; }
+    try {
+      const res = await fetch(API + '/products/', {
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify({ name, sku, stock })
+      });
+      if (res.ok) {
+        toast('Producto agregado correctamente');
+        document.getElementById('add-name').value = '';
+        document.getElementById('add-sku').value = '';
+        document.getElementById('add-stock').value = '';
+      } else {
+        const err = await res.json();
+        toast(err.detail || 'Error al agregar', 'error');
+      }
+    } catch { toast('No se pudo conectar con la API', 'error'); }
+  }
+
+  async function updateProduct() {
+    const id = document.getElementById('upd-id').value;
+    const name = document.getElementById('upd-name').value.trim();
+    const sku = document.getElementById('upd-sku').value.trim();
+    const stock = parseInt(document.getElementById('upd-stock').value);
+    if (!id || !name || !sku || isNaN(stock)) { toast('Completá todos los campos', 'error'); return; }
+    try {
+      const res = await fetch(API + '/products/' + id, {
+        method: 'PUT', headers: authHeaders(),
+        body: JSON.stringify({ name, sku, stock })
+      });
+      if (res.ok) { toast('Producto actualizado'); }
+      else { const err = await res.json(); toast(err.detail || 'Error al actualizar', 'error'); }
+    } catch { toast('No se pudo conectar con la API', 'error'); }
+  }
+
+  async function deleteProduct(id, name) {
+    if (!confirm(`¿Eliminar "${name}"?`)) return;
+    try {
+      const res = await fetch(API + '/products/' + id, { method: 'DELETE', headers: authHeaders() });
+      if (res.ok) { toast('Producto eliminado'); loadProducts(); }
+      else { const err = await res.json(); toast(err.detail || 'Error al eliminar', 'error'); }
+    } catch { toast('No se pudo conectar con la API', 'error'); }
+  }
+
+  async function registerSale() {
+    const sku = document.getElementById('sale-sku').value.trim();
+    const quantity = parseInt(document.getElementById('sale-qty').value);
+    if (!sku || isNaN(quantity) || quantity < 1) { toast('Completá todos los campos', 'error'); return; }
+    try {
+      const res = await fetch(API + '/sales/', {
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify({ sku, quantity })
+      });
+      if (res.ok) {
+        toast('Venta registrada — stock actualizado');
+        document.getElementById('sale-sku').value = '';
+        document.getElementById('sale-qty').value = '';
+      } else {
+        const err = await res.json();
+        toast(err.detail || 'Error al registrar', 'error');
+      }
+    } catch { toast('No se pudo conectar con la API', 'error'); }
+  }
+
+  async function loadSales() {
+    try {
+      const [salesRes, productsRes] = await Promise.all([
+        fetch(API + '/sales/', { headers: authHeaders() }),
+        fetch(API + '/products/', { headers: authHeaders() })
+      ]);
+      const sales = await salesRes.json();
+      const products = await productsRes.json();
+      const productMap = {};
+      products.forEach(p => productMap[p.id] = p.sku);
+
+      const tbody = document.getElementById('sales-tbody');
+      if (!sales.length) {
+        tbody.innerHTML = '<tr><td colspan="3" class="empty-state">No hay ventas registradas todavía</td></tr>';
+        return;
+      }
+      tbody.innerHTML = sales.map(s => `<tr>
+        <td><span class="sku-tag">#${s.id}</span></td>
+        <td>${productMap[s.product_id] || 'Producto #' + s.product_id}</td>
+        <td>${s.quantity} unidades</td>
+      </tr>`).join('');
+    } catch {
+      document.getElementById('sales-tbody').innerHTML =
+        '<tr><td colspan="3" class="empty-state">No se pudo conectar con la API</td></tr>';
+    }
+  }
+</script>
+</body>
+</html>
