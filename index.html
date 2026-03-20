@@ -364,22 +364,28 @@
       </div>
       <div class="divider"></div>
       <div class="section-header">
-        <h2>Actualizar stock</h2>
-        <p>Modificá el stock o datos de un producto existente</p>
-      </div>
-      <div class="card">
-        <div class="form-grid three">
-          <div class="form-group"><label>ID del producto</label><input type="number" id="upd-id" placeholder="Ej: 1" min="1"></div>
-          <div class="form-group"><label>Nombre</label><input type="text" id="upd-name" placeholder="Nuevo nombre"></div>
-          <div class="form-group"><label>SKU</label><input type="text" id="upd-sku" placeholder="Nuevo SKU"></div>
-          <div class="form-group"><label>Nuevo stock</label><input type="number" id="upd-stock" placeholder="0" min="0"></div>
-        </div>
-        <div class="form-footer">
-          <span style="font-size:12px;color:var(--muted)">Podés ver los IDs en la pestaña Stock</span>
-          <button class="btn btn-primary" onclick="updateProduct()">Actualizar producto</button>
-        </div>
-      </div>
+       <h2>Sumar stock</h2>
+        <p>Buscá el producto y agregá unidades</p>
+         </div>
+<div class="card">
+  <div class="form-grid">
+    <div class="form-group">
+      <label>Producto</label>
+      <input type="text" id="upd-search" placeholder="Escribí el nombre o SKU..." oninput="filterUpdateProducts()" autocomplete="off">
+      <div id="upd-suggestions" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;margin-top:4px;display:none;max-height:200px;overflow-y:auto;"></div>
+      <input type="hidden" id="upd-selected-id">
+      <input type="hidden" id="upd-selected-sku">
     </div>
+    <div class="form-group">
+      <label>Unidades a sumar</label>
+      <input type="number" id="upd-add-stock" placeholder="0" min="1">
+    </div>
+  </div>
+  <div class="form-footer">
+    <span style="font-size:12px;color:var(--muted)" id="upd-current-stock"></span>
+    <button class="btn btn-primary" onclick="addStock()">Sumar stock</button>
+  </div>
+</div>
 
     <!-- VENTA -->
     <div class="section" id="sec-venta">
@@ -485,6 +491,7 @@
     btn.classList.add('active');
     if (name === 'stock') loadProducts();
     if (name === 'historial') loadSales();
+    if (name === 'agregar') loadProducts();
   }
 
   // --- TOAST ---
@@ -648,6 +655,66 @@
       document.getElementById('sales-tbody').innerHTML =
         '<tr><td colspan="3" class="empty-state">No se pudo conectar con la API</td></tr>';
     }
+    function filterUpdateProducts() {
+  const q = document.getElementById('upd-search').value.toLowerCase();
+  const box = document.getElementById('upd-suggestions');
+  document.getElementById('upd-selected-id').value = '';
+  document.getElementById('upd-current-stock').textContent = '';
+  if (!q) { box.style.display = 'none'; return; }
+  const matches = allProducts.filter(p =>
+    p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q)
+  ).slice(0, 8);
+  if (!matches.length) { box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  box.innerHTML = matches.map(p => `
+    <div onclick="selectUpdateProduct(${p.id}, '${p.name}', '${p.sku}', ${p.stock})"
+      style="padding:10px 12px;cursor:pointer;font-size:13px;border-bottom:0.5px solid var(--border);display:flex;justify-content:space-between;align-items:center"
+      onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+      <span>${p.name}</span>
+      <span class="sku-tag">${p.sku} · ${p.stock} u.</span>
+    </div>
+  `).join('');
+}
+
+function selectUpdateProduct(id, name, sku, stock) {
+  document.getElementById('upd-selected-id').value = id;
+  document.getElementById('upd-selected-sku').value = sku;
+  document.getElementById('upd-search').value = name;
+  document.getElementById('upd-suggestions').style.display = 'none';
+  document.getElementById('upd-current-stock').textContent = `Stock actual: ${stock} unidades`;
+}
+
+async function addStock() {
+  const id = document.getElementById('upd-selected-id').value;
+  const sku = document.getElementById('upd-selected-sku').value;
+  const add = parseInt(document.getElementById('upd-add-stock').value);
+  const name = document.getElementById('upd-search').value.trim();
+
+  if (!id || isNaN(add) || add < 1) { toast('Seleccioná un producto y una cantidad', 'error'); return; }
+
+  const product = allProducts.find(p => p.id == id);
+  if (!product) { toast('Producto no encontrado', 'error'); return; }
+
+  const newStock = product.stock + add;
+
+  try {
+    const res = await fetch(API + '/products/' + id, {
+      method: 'PUT', headers: authHeaders(),
+      body: JSON.stringify({ name, sku, stock: newStock })
+    });
+    if (res.ok) {
+      toast(`Stock actualizado — ahora hay ${newStock} unidades`);
+      document.getElementById('upd-search').value = '';
+      document.getElementById('upd-selected-id').value = '';
+      document.getElementById('upd-add-stock').value = '';
+      document.getElementById('upd-current-stock').textContent = '';
+      loadProducts();
+    } else {
+      const err = await res.json();
+      toast(err.detail || 'Error al actualizar', 'error');
+    }
+  } catch { toast('No se pudo conectar con la API', 'error'); }
+}
   }
 </script>
 </body>
