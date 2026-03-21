@@ -486,8 +486,9 @@
     document.getElementById('sec-' + name).classList.add('active');
     btn.classList.add('active');
     if (name === 'stock') loadProducts();
-    if (name === 'historial') loadSales();
+    if (name === 'historial') { loadProducts(); loadSales(); }
     if (name === 'venta') loadProducts();
+    if (name === 'agregar') loadProducts();
   }
 
   // --- TOAST ---
