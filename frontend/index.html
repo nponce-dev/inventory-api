@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Inventario</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2d5a3d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AyM">
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js');
+  }
+</script>
 <style>
   :root {
     --bg: #f5f3ee;
@@ -32,7 +41,6 @@
     min-height: 100vh;
   }
 
-  /* LOGIN */
   #login-screen {
     min-height: 100vh;
     display: flex;
@@ -50,152 +58,60 @@
     max-width: 360px;
   }
 
-  .login-logo {
-    font-family: var(--mono);
-    font-size: 18px;
-    font-weight: 500;
-    color: var(--accent);
-    margin-bottom: 0.5rem;
-  }
+  .login-logo { font-family: var(--mono); font-size: 18px; font-weight: 500; color: var(--accent); margin-bottom: 0.5rem; }
+  .login-subtitle { font-size: 13px; color: var(--muted); margin-bottom: 2rem; }
 
-  .login-subtitle {
-    font-size: 13px;
-    color: var(--muted);
-    margin-bottom: 2rem;
-  }
+  .login-card .form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
 
-  .login-card .form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    margin-bottom: 12px;
-  }
-
-  .login-card label {
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: .4px;
-  }
+  .login-card label { font-size: 12px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
 
   .login-card input {
-    font-family: var(--sans);
-    font-size: 14px;
-    color: var(--text);
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 7px;
-    padding: 9px 12px;
-    outline: none;
-    transition: border-color .15s, box-shadow .15s;
-    width: 100%;
+    font-family: var(--sans); font-size: 14px; color: var(--text); background: var(--bg);
+    border: 1px solid var(--border); border-radius: 7px; padding: 9px 12px; outline: none;
+    transition: border-color .15s, box-shadow .15s; width: 100%;
   }
+  .login-card input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(45,90,61,.1); background: var(--surface); }
 
-  .login-card input:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(45,90,61,.1);
-    background: var(--surface);
-  }
-
-  .login-error {
-    font-size: 12px;
-    color: var(--danger);
-    margin-bottom: 10px;
-    min-height: 16px;
-  }
+  .login-error { font-size: 12px; color: var(--danger); margin-bottom: 10px; min-height: 16px; }
 
   .btn-login {
-    width: 100%;
-    font-family: var(--sans);
-    font-size: 14px;
-    font-weight: 500;
-    padding: 10px;
-    border-radius: 7px;
-    border: none;
-    background: var(--accent);
-    color: white;
-    cursor: pointer;
-    transition: background .15s;
-    margin-top: 4px;
+    width: 100%; font-family: var(--sans); font-size: 14px; font-weight: 500;
+    padding: 10px; border-radius: 7px; border: none; background: var(--accent);
+    color: white; cursor: pointer; transition: background .15s; margin-top: 4px;
   }
   .btn-login:hover { background: var(--accent-hover); }
 
-  /* APP */
   #app-screen { display: none; }
 
   header {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: 0 2rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 56px;
-    position: sticky;
-    top: 0;
-    z-index: 100;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 0 2rem; display: flex; align-items: center;
+    justify-content: space-between; height: 56px; position: sticky; top: 0; z-index: 100;
   }
 
-  .logo {
-    font-family: var(--mono);
-    font-size: 15px;
-    font-weight: 500;
-    color: var(--accent);
-  }
-
-  .header-right {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-  }
-
-  .api-status {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    color: var(--muted);
-    font-family: var(--mono);
-  }
-
+  .logo { font-family: var(--mono); font-size: 15px; font-weight: 500; color: var(--accent); }
+  .header-right { display: flex; align-items: center; gap: 16px; }
+  .api-status { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); font-family: var(--mono); }
   .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #ccc; transition: background .3s; }
   .status-dot.ok { background: #4caf50; }
   .status-dot.err { background: var(--danger); }
 
   .btn-logout {
-    font-family: var(--sans);
-    font-size: 12px;
-    color: var(--muted);
-    background: none;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 5px 10px;
-    cursor: pointer;
-    transition: color .15s, border-color .15s;
+    font-family: var(--sans); font-size: 12px; color: var(--muted);
+    background: none; border: 1px solid var(--border); border-radius: 6px;
+    padding: 5px 10px; cursor: pointer; transition: color .15s, border-color .15s;
   }
   .btn-logout:hover { color: var(--danger); border-color: var(--danger); }
 
   nav {
-    display: flex;
-    gap: 2px;
-    padding: 0 2rem;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
+    display: flex; gap: 2px; padding: 0 2rem;
+    background: var(--surface); border-bottom: 1px solid var(--border);
   }
 
   .nav-btn {
-    font-family: var(--sans);
-    font-size: 13px;
-    font-weight: 400;
-    color: var(--muted);
-    background: none;
-    border: none;
-    border-bottom: 2px solid transparent;
-    padding: 10px 14px;
-    cursor: pointer;
-    transition: color .15s, border-color .15s;
-    white-space: nowrap;
+    font-family: var(--sans); font-size: 13px; font-weight: 400; color: var(--muted);
+    background: none; border: none; border-bottom: 2px solid transparent;
+    padding: 10px 14px; cursor: pointer; transition: color .15s, border-color .15s; white-space: nowrap;
   }
   .nav-btn:hover { color: var(--text); }
   .nav-btn.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 500; }
@@ -353,30 +269,31 @@
           <button class="btn btn-primary" onclick="addProduct()">Agregar producto</button>
         </div>
       </div>
-<div class="divider"></div>
-<div class="section-header">
-  <h2>Sumar stock</h2>
-  <p>Buscá el producto y agregá unidades</p>
-</div>
-<div class="card">
-  <div class="form-grid">
-    <div class="form-group">
-      <label>Producto</label>
-      <input type="text" id="upd-search" placeholder="Escribí el nombre o SKU..." oninput="filterUpdateProducts()" autocomplete="off">
-      <div id="upd-suggestions" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;margin-top:4px;display:none;max-height:200px;overflow-y:auto;"></div>
-      <input type="hidden" id="upd-selected-id">
-      <input type="hidden" id="upd-selected-sku">
+      <div class="divider"></div>
+      <div class="section-header">
+        <h2>Sumar stock</h2>
+        <p>Buscá el producto y agregá unidades</p>
+      </div>
+      <div class="card">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Producto</label>
+            <input type="text" id="upd-search" placeholder="Escribí el nombre o SKU..." oninput="filterUpdateProducts()" autocomplete="off">
+            <div id="upd-suggestions" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;margin-top:4px;display:none;max-height:200px;overflow-y:auto;"></div>
+            <input type="hidden" id="upd-selected-id">
+            <input type="hidden" id="upd-selected-sku">
+          </div>
+          <div class="form-group">
+            <label>Unidades a sumar</label>
+            <input type="number" id="upd-add-stock" placeholder="0" min="1">
+          </div>
+        </div>
+        <div class="form-footer">
+          <span style="font-size:12px;color:var(--muted)" id="upd-current-stock"></span>
+          <button class="btn btn-primary" onclick="addStock()">Sumar stock</button>
+        </div>
+      </div>
     </div>
-    <div class="form-group">
-      <label>Unidades a sumar</label>
-      <input type="number" id="upd-add-stock" placeholder="0" min="1">
-    </div>
-  </div>
-  <div class="form-footer">
-    <span style="font-size:12px;color:var(--muted)" id="upd-current-stock"></span>
-    <button class="btn btn-primary" onclick="addStock()">Sumar stock</button>
-  </div>
-</div>
 
     <!-- VENTA -->
     <div class="section" id="sec-venta">
@@ -387,11 +304,11 @@
       <div class="card">
         <div class="form-grid">
           <div class="form-group">
-  <label>Producto</label>
-  <input type="text" id="sale-search" placeholder="Escribí el nombre del producto..." oninput="filterSaleProducts()" autocomplete="off">
-  <div id="sale-suggestions" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;margin-top:4px;display:none;max-height:200px;overflow-y:auto;"></div>
-  <input type="hidden" id="sale-sku">
-</div>
+            <label>Producto</label>
+            <input type="text" id="sale-search" placeholder="Escribí el nombre del producto..." oninput="filterSaleProducts()" autocomplete="off">
+            <div id="sale-suggestions" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;margin-top:4px;display:none;max-height:200px;overflow-y:auto;"></div>
+            <input type="hidden" id="sale-sku">
+          </div>
           <div class="form-group"><label>Cantidad vendida</label><input type="number" id="sale-qty" placeholder="1" min="1"></div>
         </div>
         <div class="form-footer">
@@ -426,30 +343,23 @@
 <div id="toast"></div>
 
 <script>
-  const API = 'https://inventory-api-production-6d9d.up.railway.app'
+  const API = 'https://inventory-api-production-6d9d.up.railway.app';
   let allProducts = [];
 
   function getToken() { return localStorage.getItem('token'); }
   function authHeaders() { return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() }; }
 
-  // --- LOGIN ---
   async function doLogin() {
     const username = document.getElementById('login-user').value.trim();
     const password = document.getElementById('login-pass').value;
     document.getElementById('login-error').textContent = '';
-
-    if (!username || !password) {
-      document.getElementById('login-error').textContent = 'Completá usuario y contraseña';
-      return;
-    }
-
+    if (!username || !password) { document.getElementById('login-error').textContent = 'Completá usuario y contraseña'; return; }
     try {
       const res = await fetch(API + '/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
       });
-
       if (res.ok) {
         const data = await res.json();
         localStorage.setItem('token', data.access_token);
@@ -457,9 +367,7 @@
       } else {
         document.getElementById('login-error').textContent = 'Usuario o contraseña incorrectos';
       }
-    } catch {
-      document.getElementById('login-error').textContent = 'No se pudo conectar con la API';
-    }
+    } catch { document.getElementById('login-error').textContent = 'No se pudo conectar con la API'; }
   }
 
   function logout() {
@@ -476,10 +384,8 @@
     loadProducts();
   }
 
-  // --- AUTO LOGIN si ya hay token ---
   if (getToken()) showApp();
 
-  // --- NAV ---
   function showSection(name, btn) {
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -491,7 +397,6 @@
     if (name === 'agregar') loadProducts();
   }
 
-  // --- TOAST ---
   function toast(msg, type = 'success') {
     const t = document.getElementById('toast');
     t.textContent = msg;
@@ -499,7 +404,6 @@
     setTimeout(() => t.className = '', 3000);
   }
 
-  // --- API STATUS ---
   async function checkStatus() {
     try {
       const res = await fetch(API + '/products/', { headers: authHeaders() });
@@ -512,7 +416,6 @@
     }
   }
 
-  // --- PRODUCTS ---
   async function loadProducts() {
     try {
       const res = await fetch(API + '/products/', { headers: authHeaders() });
@@ -582,22 +485,6 @@
     } catch { toast('No se pudo conectar con la API', 'error'); }
   }
 
-  async function updateProduct() {
-    const id = document.getElementById('upd-id').value;
-    const name = document.getElementById('upd-name').value.trim();
-    const sku = document.getElementById('upd-sku').value.trim();
-    const stock = parseInt(document.getElementById('upd-stock').value);
-    if (!id || !name || !sku || isNaN(stock)) { toast('Completá todos los campos', 'error'); return; }
-    try {
-      const res = await fetch(API + '/products/' + id, {
-        method: 'PUT', headers: authHeaders(),
-        body: JSON.stringify({ name, sku, stock })
-      });
-      if (res.ok) { toast('Producto actualizado'); }
-      else { const err = await res.json(); toast(err.detail || 'Error al actualizar', 'error'); }
-    } catch { toast('No se pudo conectar con la API', 'error'); }
-  }
-
   async function deleteProduct(id, name) {
     if (!confirm(`¿Eliminar "${name}"?`)) return;
     try {
@@ -607,23 +494,59 @@
     } catch { toast('No se pudo conectar con la API', 'error'); }
   }
 
-  async function registerSale() {
-    const sku = document.getElementById('sale-sku').value.trim();
-    const quantity = parseInt(document.getElementById('sale-qty').value);
-    if (!sku || isNaN(quantity) || quantity < 1) { toast('Completá todos los campos', 'error'); return; }
+  function filterUpdateProducts() {
+    const q = document.getElementById('upd-search').value.toLowerCase();
+    const box = document.getElementById('upd-suggestions');
+    document.getElementById('upd-selected-id').value = '';
+    document.getElementById('upd-current-stock').textContent = '';
+    if (!q) { box.style.display = 'none'; return; }
+    const matches = allProducts.filter(p =>
+      p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q)
+    ).slice(0, 8);
+    if (!matches.length) { box.style.display = 'none'; return; }
+    box.style.display = 'block';
+    box.innerHTML = matches.map(p => `
+      <div onclick="selectUpdateProduct(${p.id}, '${p.name}', '${p.sku}', ${p.stock})"
+        style="padding:10px 12px;cursor:pointer;font-size:13px;border-bottom:0.5px solid var(--border);display:flex;justify-content:space-between;align-items:center"
+        onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+        <span>${p.name}</span>
+        <span class="sku-tag">${p.sku} · ${p.stock} u.</span>
+      </div>
+    `).join('');
+  }
+
+  function selectUpdateProduct(id, name, sku, stock) {
+    document.getElementById('upd-selected-id').value = id;
+    document.getElementById('upd-selected-sku').value = sku;
+    document.getElementById('upd-search').value = name;
+    document.getElementById('upd-suggestions').style.display = 'none';
+    document.getElementById('upd-current-stock').textContent = `Stock actual: ${stock} unidades`;
+  }
+
+  async function addStock() {
+    const id = document.getElementById('upd-selected-id').value;
+    const sku = document.getElementById('upd-selected-sku').value;
+    const add = parseInt(document.getElementById('upd-add-stock').value);
+    const name = document.getElementById('upd-search').value.trim();
+    if (!id || isNaN(add) || add < 1) { toast('Seleccioná un producto y una cantidad', 'error'); return; }
+    const product = allProducts.find(p => p.id == id);
+    if (!product) { toast('Producto no encontrado', 'error'); return; }
+    const newStock = product.stock + add;
     try {
-      const res = await fetch(API + '/sales/', {
-        method: 'POST', headers: authHeaders(),
-        body: JSON.stringify({ sku, quantity })
+      const res = await fetch(API + '/products/' + id, {
+        method: 'PUT', headers: authHeaders(),
+        body: JSON.stringify({ name, sku, stock: newStock })
       });
       if (res.ok) {
-        toast('Venta registrada — stock actualizado');
-        document.getElementById('sale-sku').value = '';
-        document.getElementById('sale-search').value = '';
-        document.getElementById('sale-qty').value = '';
+        toast(`Stock actualizado — ahora hay ${newStock} unidades`);
+        document.getElementById('upd-search').value = '';
+        document.getElementById('upd-selected-id').value = '';
+        document.getElementById('upd-add-stock').value = '';
+        document.getElementById('upd-current-stock').textContent = '';
+        loadProducts();
       } else {
         const err = await res.json();
-        toast(err.detail || 'Error al registrar', 'error');
+        toast(err.detail || 'Error al actualizar', 'error');
       }
     } catch { toast('No se pudo conectar con la API', 'error'); }
   }
@@ -654,66 +577,26 @@
     document.getElementById('sale-suggestions').style.display = 'none';
   }
 
-function filterUpdateProducts() {
-  const q = document.getElementById('upd-search').value.toLowerCase();
-  const box = document.getElementById('upd-suggestions');
-  document.getElementById('upd-selected-id').value = '';
-  document.getElementById('upd-current-stock').textContent = '';
-  if (!q) { box.style.display = 'none'; return; }
-  const matches = allProducts.filter(p =>
-    p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q)
-  ).slice(0, 8);
-  if (!matches.length) { box.style.display = 'none'; return; }
-  box.style.display = 'block';
-  box.innerHTML = matches.map(p => `
-    <div onclick="selectUpdateProduct(${p.id}, '${p.name}', '${p.sku}', ${p.stock})"
-      style="padding:10px 12px;cursor:pointer;font-size:13px;border-bottom:0.5px solid var(--border);display:flex;justify-content:space-between;align-items:center"
-      onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
-      <span>${p.name}</span>
-      <span class="sku-tag">${p.sku} · ${p.stock} u.</span>
-    </div>
-  `).join('');
-}
-
-function selectUpdateProduct(id, name, sku, stock) {
-  document.getElementById('upd-selected-id').value = id;
-  document.getElementById('upd-selected-sku').value = sku;
-  document.getElementById('upd-search').value = name;
-  document.getElementById('upd-suggestions').style.display = 'none';
-  document.getElementById('upd-current-stock').textContent = `Stock actual: ${stock} unidades`;
-}
-
-async function addStock() {
-  const id = document.getElementById('upd-selected-id').value;
-  const sku = document.getElementById('upd-selected-sku').value;
-  const add = parseInt(document.getElementById('upd-add-stock').value);
-  const name = document.getElementById('upd-search').value.trim();
-
-  if (!id || isNaN(add) || add < 1) { toast('Seleccioná un producto y una cantidad', 'error'); return; }
-
-  const product = allProducts.find(p => p.id == id);
-  if (!product) { toast('Producto no encontrado', 'error'); return; }
-
-  const newStock = product.stock + add;
-
-  try {
-    const res = await fetch(API + '/products/' + id, {
-      method: 'PUT', headers: authHeaders(),
-      body: JSON.stringify({ name, sku, stock: newStock })
-    });
-    if (res.ok) {
-      toast(`Stock actualizado — ahora hay ${newStock} unidades`);
-      document.getElementById('upd-search').value = '';
-      document.getElementById('upd-selected-id').value = '';
-      document.getElementById('upd-add-stock').value = '';
-      document.getElementById('upd-current-stock').textContent = '';
-      loadProducts();
-    } else {
-      const err = await res.json();
-      toast(err.detail || 'Error al actualizar', 'error');
-    }
-  } catch { toast('No se pudo conectar con la API', 'error'); }
-}
+  async function registerSale() {
+    const sku = document.getElementById('sale-sku').value.trim();
+    const quantity = parseInt(document.getElementById('sale-qty').value);
+    if (!sku || isNaN(quantity) || quantity < 1) { toast('Completá todos los campos', 'error'); return; }
+    try {
+      const res = await fetch(API + '/sales/', {
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify({ sku, quantity })
+      });
+      if (res.ok) {
+        toast('Venta registrada — stock actualizado');
+        document.getElementById('sale-sku').value = '';
+        document.getElementById('sale-search').value = '';
+        document.getElementById('sale-qty').value = '';
+      } else {
+        const err = await res.json();
+        toast(err.detail || 'Error al registrar', 'error');
+      }
+    } catch { toast('No se pudo conectar con la API', 'error'); }
+  }
 
   async function loadSales() {
     try {
@@ -725,7 +608,6 @@ async function addStock() {
       const products = await productsRes.json();
       const productMap = {};
       products.forEach(p => productMap[p.id] = p.sku);
-
       const tbody = document.getElementById('sales-tbody');
       if (!sales.length) {
         tbody.innerHTML = '<tr><td colspan="3" class="empty-state">No hay ventas registradas todavía</td></tr>';
