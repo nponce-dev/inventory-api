@@ -257,6 +257,7 @@
     <button class="nav-btn" onclick="showSection('agregar', this)">Agregar producto</button>
     <button class="nav-btn" onclick="showSection('venta', this)">Registrar venta</button>
     <button class="nav-btn" onclick="showSection('compras', this)">Registrar compra</button>
+    <button class="nav-btn" onclick="showSection('descuentos', this)">Descuentos</button>
     <button class="nav-btn" onclick="showSection('contabilidad', this)">Contabilidad</button>
   </nav>
 
@@ -396,8 +397,74 @@
         </div>
       </div>
     </div>
+<!-- DESCUENTOS -->
+<div class="section" id="sec-descuentos">
+  <div class="section-header">
+    <h2>Descuentos por paquete</h2>
+    <p>Armá combos de productos con un precio especial distinto a la suma individual</p>
+  </div>
+  <div class="card">
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Nombre del descuento</label>
+        <input type="text" id="disc-name" placeholder="Ej: Combo verano, Pack x3...">
+      </div>
+    </div>
+    <div class="form-grid" style="margin-top:12px">
+      <div class="form-group">
+        <label>Producto</label>
+        <input type="text" id="disc-search" placeholder="Escribí el nombre o SKU..." oninput="filterDiscProducts()" autocomplete="off">
+        <div id="disc-suggestions" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;margin-top:4px;display:none;max-height:200px;overflow-y:auto;"></div>
+        <input type="hidden" id="disc-product-id">
+        <input type="hidden" id="disc-product-name">
+        <input type="hidden" id="disc-product-precio">
+      </div>
+      <div class="form-group">
+        <label>Cantidad</label>
+        <input type="number" id="disc-qty" placeholder="1" min="1">
+      </div>
+    </div>
+    <div style="margin-top:10px;text-align:right">
+      <button class="btn btn-secondary" onclick="addDiscItem()">+ Agregar producto al combo</button>
+    </div>
 
+    <div id="disc-items-list" class="purchase-items-list" style="display:none"></div>
 
+    <div id="disc-precio-normal" style="display:none;margin-top:12px;padding:10px 14px;background:var(--bg);border-radius:8px;font-size:13px;color:var(--muted)">
+      Precio normal (suma): <strong id="disc-sum" style="color:var(--text)">$0.00</strong>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Precio del combo ($)</label>
+        <input type="number" id="disc-precio" placeholder="0.00" min="0.01" step="0.01">
+      </div>
+    </div>
+    <div class="form-footer">
+      <span style="font-size:12px;color:var(--muted)" id="disc-items-count">Ningún producto agregado todavía</span>
+      <button class="btn btn-primary" onclick="saveDiscount()">Guardar descuento</button>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+  <div class="section-header">
+    <h2>Descuentos guardados</h2>
+    <p>Todos los combos y precios especiales definidos</p>
+  </div>
+  <div class="card">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:1rem">
+      <button class="btn btn-secondary" onclick="loadDiscounts()">↺ Actualizar</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Nombre</th><th>Productos del combo</th><th>Precio normal</th><th>Precio combo</th><th>Ahorro</th><th></th></tr></thead>
+        <tbody id="discounts-tbody"><tr><td colspan="7" class="empty-state">Cargando...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
 
     <!-- CONTABILIDAD -->
     <div class="section" id="sec-contabilidad">
@@ -495,6 +562,172 @@
 </div>
 <div id="toast"></div>
 
+// ── DESCUENTOS ──
+let discItems = [];
+
+function filterDiscProducts() {
+  const q = document.getElementById('disc-search').value.toLowerCase();
+  const box = document.getElementById('disc-suggestions');
+  document.getElementById('disc-product-id').value = '';
+  if (!q) { box.style.display = 'none'; return; }
+  const matches = allProducts.filter(p =>
+    p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q)
+  ).slice(0, 8);
+  if (!matches.length) { box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  box.innerHTML = matches.map(p => `
+    <div onclick="selectDiscProduct(${p.id}, '${p.name}', ${p.precio_venta || 0})"
+      style="padding:10px 12px;cursor:pointer;font-size:13px;border-bottom:0.5px solid var(--border);display:flex;justify-content:space-between;align-items:center"
+      onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+      <span>${p.name}</span>
+      <span class="sku-tag">${p.sku} · $${p.precio_venta != null ? p.precio_venta.toFixed(2) : '—'}</span>
+    </div>
+  `).join('');
+}
+
+function selectDiscProduct(id, name, precio) {
+  document.getElementById('disc-product-id').value = id;
+  document.getElementById('disc-product-name').value = name;
+  document.getElementById('disc-product-precio').value = precio;
+  document.getElementById('disc-search').value = name;
+  document.getElementById('disc-suggestions').style.display = 'none';
+}
+
+function addDiscItem() {
+  const product_id = parseInt(document.getElementById('disc-product-id').value);
+  const name = document.getElementById('disc-product-name').value;
+  const precio = parseFloat(document.getElementById('disc-product-precio').value) || 0;
+  const quantity = parseInt(document.getElementById('disc-qty').value);
+  if (!product_id) { toast('Seleccioná un producto de la lista', 'error'); return; }
+  if (isNaN(quantity) || quantity < 1) { toast('Ingresá una cantidad válida', 'error'); return; }
+  const existing = discItems.find(i => i.product_id === product_id);
+  if (existing) {
+    existing.quantity += quantity;
+  } else {
+    discItems.push({ product_id, name, quantity, precio });
+  }
+  renderDiscItems();
+  document.getElementById('disc-search').value = '';
+  document.getElementById('disc-product-id').value = '';
+  document.getElementById('disc-product-name').value = '';
+  document.getElementById('disc-product-precio').value = '';
+  document.getElementById('disc-qty').value = '';
+}
+
+function renderDiscItems() {
+  const list = document.getElementById('disc-items-list');
+  const counter = document.getElementById('disc-items-count');
+  const sumBox = document.getElementById('disc-precio-normal');
+  const sumEl = document.getElementById('disc-sum');
+  if (!discItems.length) {
+    list.style.display = 'none';
+    sumBox.style.display = 'none';
+    counter.textContent = 'Ningún producto agregado todavía';
+    return;
+  }
+  const sum = discItems.reduce((acc, i) => acc + (i.precio * i.quantity), 0);
+  list.style.display = 'flex';
+  sumBox.style.display = 'block';
+  sumEl.textContent = `$${sum.toFixed(2)}`;
+  counter.textContent = `${discItems.length} producto(s) en este combo`;
+  list.innerHTML = discItems.map((item, idx) => `
+    <div class="purchase-item-row">
+      <span class="item-name">${item.name}</span>
+      <span class="item-qty">${item.quantity} u. · $${(item.precio * item.quantity).toFixed(2)}</span>
+      <button class="btn btn-danger btn-remove" onclick="removeDiscItem(${idx})">✕</button>
+    </div>
+  `).join('');
+}
+
+function removeDiscItem(idx) {
+  discItems.splice(idx, 1);
+  renderDiscItems();
+}
+
+async function saveDiscount() {
+  const name = document.getElementById('disc-name').value.trim();
+  const precio_descuento = parseFloat(document.getElementById('disc-precio').value);
+  if (!name) { toast('Ingresá un nombre para el descuento', 'error'); return; }
+  if (!discItems.length) { toast('Agregá al menos un producto al combo', 'error'); return; }
+  if (isNaN(precio_descuento) || precio_descuento <= 0) { toast('Ingresá el precio del combo', 'error'); return; }
+  const body = {
+    name,
+    precio_descuento,
+    items: discItems.map(i => ({ product_id: i.product_id, quantity: i.quantity }))
+  };
+  try {
+    const res = await fetch(API + '/discounts/', {
+      method: 'POST', headers: authHeaders(),
+      body: JSON.stringify(body)
+    });
+    if (res.ok) {
+      toast('Descuento guardado correctamente');
+      discItems = [];
+      renderDiscItems();
+      document.getElementById('disc-name').value = '';
+      document.getElementById('disc-precio').value = '';
+      loadDiscounts();
+    } else {
+      const err = await res.json();
+      toast(err.detail || 'Error al guardar', 'error');
+    }
+  } catch { toast('No se pudo conectar con la API', 'error'); }
+}
+
+async function loadDiscounts() {
+  try {
+    const [discRes, productsRes] = await Promise.all([
+      fetch(API + '/discounts/', { headers: authHeaders() }),
+      fetch(API + '/products/', { headers: authHeaders() })
+    ]);
+    const discounts = await discRes.json();
+    const products = await productsRes.json();
+    const productMap = {};
+    products.forEach(p => productMap[p.id] = { name: p.name, precio: p.precio_venta });
+    const tbody = document.getElementById('discounts-tbody');
+    if (!discounts.length) {
+      tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No hay descuentos guardados todavía</td></tr>';
+      return;
+    }
+    tbody.innerHTML = discounts.map(d => {
+      const itemsText = d.items.map(i => {
+        const p = productMap[i.product_id];
+        return p ? `${p.name} ×${i.quantity}` : `#${i.product_id} ×${i.quantity}`;
+      }).join(', ');
+      const precioNormal = d.items.reduce((acc, i) => {
+        const p = productMap[i.product_id];
+        return acc + (p && p.precio ? p.precio * i.quantity : 0);
+      }, 0);
+      const ahorro = precioNormal > 0 ? precioNormal - d.precio_descuento : null;
+      const ahorroText = ahorro !== null && ahorro > 0
+        ? `<span style="color:var(--accent);font-weight:500">-$${ahorro.toFixed(2)}</span>`
+        : `<span style="color:var(--muted)">—</span>`;
+      const normalText = precioNormal > 0 ? `<span style="text-decoration:line-through;color:var(--muted)">$${precioNormal.toFixed(2)}</span>` : '—';
+      return `<tr>
+        <td><span class="sku-tag">#${d.id}</span></td>
+        <td><strong>${d.name}</strong></td>
+        <td style="font-size:12px;color:var(--muted)">${itemsText}</td>
+        <td>${normalText}</td>
+        <td><strong style="color:var(--accent)">$${d.precio_descuento.toFixed(2)}</strong></td>
+        <td>${ahorroText}</td>
+        <td><button class="btn btn-secondary" style="padding:4px 8px;font-size:12px;color:var(--danger);border-color:var(--danger)" onclick="deleteDiscount(${d.id})">✕</button></td>
+      </tr>`;
+    }).join('');
+  } catch {
+    document.getElementById('discounts-tbody').innerHTML =
+      '<tr><td colspan="7" class="empty-state">No se pudo conectar con la API</td></tr>';
+  }
+}
+
+async function deleteDiscount(id) {
+  if (!confirm('¿Eliminar este descuento?')) return;
+  try {
+    const res = await fetch(API + '/discounts/' + id, { method: 'DELETE', headers: authHeaders() });
+    if (res.ok) { toast('Descuento eliminado'); loadDiscounts(); }
+    else { toast('Error al eliminar', 'error'); }
+  } catch { toast('No se pudo conectar con la API', 'error'); }
+}
+
 <script>
   const API = 'https://inventory-api-production-6d9d.up.railway.app';
   let allProducts = [];
@@ -549,6 +782,7 @@
     if (name === 'venta') loadProducts();
     if (name === 'agregar') loadProducts();
     if (name === 'compras') loadProducts();
+    if (name === 'descuentos') loadDiscounts();
     if (name === 'contabilidad') { loadContabilidad(); showSubTab('ventas'); }
   }
 
