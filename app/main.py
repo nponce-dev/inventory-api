@@ -11,15 +11,6 @@ app = FastAPI(title="Inventario API")
 
 Base.metadata.create_all(bind=engine, checkfirst=True)
 
-# Agregar columnas nuevas si no existen (PostgreSQL)
-from sqlalchemy import text, inspect
-with engine.connect() as conn:
-    inspector = inspect(engine)
-    columnas = [c['name'] for c in inspector.get_columns('sales')]
-    if 'precio_unitario_real' not in columnas:
-        conn.execute(text("ALTER TABLE sales ADD COLUMN precio_unitario_real FLOAT"))
-        conn.commit()
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
