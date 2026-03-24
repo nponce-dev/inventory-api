@@ -569,19 +569,19 @@
   let allProducts = [];
   let buyItems = []; // items de la compra en curso
     // ── DESCUENTOS ──
-let discItems = [];
+  let discItems = [];
 
-function filterDiscProducts() {
-  const q = document.getElementById('disc-search').value.toLowerCase();
-  const box = document.getElementById('disc-suggestions');
-  document.getElementById('disc-product-id').value = '';
-  if (!q) { box.style.display = 'none'; return; }
-  const matches = allProducts.filter(p =>
-    p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q)
-  ).slice(0, 8);
-  if (!matches.length) { box.style.display = 'none'; return; }
-  box.style.display = 'block';
-  box.innerHTML = matches.map(p => `
+  function filterDiscProducts() {
+    const q = document.getElementById('disc-search').value.toLowerCase();
+    const box = document.getElementById('disc-suggestions');
+    document.getElementById('disc-product-id').value = '';
+    if (!q) { box.style.display = 'none'; return; }
+    const matches = allProducts.filter(p =>
+      p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q)
+    ).slice(0, 8);
+    if (!matches.length) { box.style.display = 'none'; return; }
+    box.style.display = 'block';
+    box.innerHTML = matches.map(p => `
     <div onclick="selectDiscProduct(${p.id}, '${p.name}', ${p.precio_venta || 0})"
       style="padding:10px 12px;cursor:pointer;font-size:13px;border-bottom:0.5px solid var(--border);display:flex;justify-content:space-between;align-items:center"
       onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
