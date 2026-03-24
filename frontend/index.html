@@ -10,6 +10,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="AyM">
 <script>
+
+// v2
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js');
   }
@@ -980,26 +982,52 @@ async function deleteDiscount(id) {
     document.getElementById('sale-suggestions').style.display = 'none';
   }
 
-  async function registerSale() {
-    const sku = document.getElementById('sale-sku').value.trim();
-    const quantity = parseInt(document.getElementById('sale-qty').value);
-    if (!sku || isNaN(quantity) || quantity < 1) { toast('Completá todos los campos', 'error'); return; }
-    try {
-      const res = await fetch(API + '/sales/', {
-        method: 'POST', headers: authHeaders(),
-        body: JSON.stringify({ sku, quantity })
-      });
-      if (res.ok) {
-        toast('Venta registrada — stock actualizado');
-        document.getElementById('sale-sku').value = '';
-        document.getElementById('sale-search').value = '';
-        document.getElementById('sale-qty').value = '';
-      } else {
-        const err = await res.json();
-        toast(err.detail || 'Error al registrar', 'error');
+async function registerSale() {
+  const sku = document.getElementById('sale-sku').value.trim();
+  const quantity = parseInt(document.getElementById('sale-qty').value);
+  if (!sku || isNaN(quantity) || quantity < 1) { toast('Completá todos los campos', 'error'); return; }
+
+  const product = allProducts.find(p => p.sku === sku);
+
+  let precio_unitario_real = null;
+  try {
+    const discRes = await fetch(API + '/discounts/', { headers: authHeaders() });
+    const discounts = await discRes.json();
+    const coincidencias = discounts.filter(d =>
+      d.items.length === 1 &&
+      d.items[0].product_id === product?.id &&
+      d.items[0].quantity === quantity
+    );
+    if (coincidencias.length > 0) {
+      const d = coincidencias[0];
+      const precioNormal = product?.precio_venta ? product.precio_venta * quantity : null;
+      const msg = precioNormal
+        ? `¿Aplicar descuento "${d.name}"?\nPrecio normal: $${precioNormal.toFixed(2)}\nPrecio combo: $${d.precio_descuento.toFixed(2)}`
+        : `¿Aplicar descuento "${d.name}"?\nPrecio combo: $${d.precio_descuento.toFixed(2)}`;
+      if (confirm(msg)) {
+        precio_unitario_real = d.precio_descuento / quantity;
       }
-    } catch { toast('No se pudo conectar con la API', 'error'); }
-  }
+    }
+  } catch { }
+
+  try {
+    const body = { sku, quantity };
+    if (precio_unitario_real !== null) body.precio_unitario_real = precio_unitario_real;
+    const res = await fetch(API + '/sales/', {
+      method: 'POST', headers: authHeaders(),
+      body: JSON.stringify(body)
+    });
+    if (res.ok) {
+      toast(precio_unitario_real !== null ? 'Venta registrada con descuento aplicado' : 'Venta registrada — stock actualizado');
+      document.getElementById('sale-sku').value = '';
+      document.getElementById('sale-search').value = '';
+      document.getElementById('sale-qty').value = '';
+    } else {
+      const err = await res.json();
+      toast(err.detail || 'Error al registrar', 'error');
+    }
+  } catch { toast('No se pudo conectar con la API', 'error'); }
+}
 
   // ── COMPRAS ──
   function filterBuyProducts() {
@@ -1185,19 +1213,23 @@ async function deleteDiscount(id) {
         tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No hay ventas registradas todavía</td></tr>';
         return;
       }
-      tbody.innerHTML = sales.map(s => {
-        const prod = productMap[s.product_id] || { name: 'Producto #' + s.product_id, precio: null };
-        const precioUnit = prod.precio != null ? `$${prod.precio.toFixed(2)}` : '—';
-        const total = prod.precio != null ? `$${(prod.precio * s.quantity).toFixed(2)}` : '—';
-        return `<tr>
-          <td><span class="sku-tag">#${s.id}</span></td>
-          <td>${prod.name}</td>
-          <td>${s.quantity} u.</td>
-          <td>${precioUnit}</td>
-          <td><strong>${total}</strong></td>
-          <td><button class="btn btn-secondary" style="padding:4px 8px;font-size:12px;color:var(--danger);border-color:var(--danger)" onclick="deleteSale(${s.id})">✕</button></td>
-        </tr>`;
-      }).join('');
+        tbody.innerHTML = sales.map(s => {
+  const prod = productMap[s.product_id] || { name: 'Producto #' + s.product_id, precio: null };
+  const precioUnitReal = s.precio_unitario_real !== null && s.precio_unitario_real !== undefined ? s.precio_unitario_real : prod.precio;
+  const precioUnit = precioUnitReal != null ? `$${precioUnitReal.toFixed(2)}` : '—';
+  const total = precioUnitReal != null ? `$${(precioUnitReal * s.quantity).toFixed(2)}` : '—';
+  const descuentoTag = s.precio_unitario_real !== null && s.precio_unitario_real !== undefined
+    ? `<span style="font-size:10px;background:var(--accent-light);color:var(--accent);border-radius:4px;padding:1px 5px;margin-left:4px">% descuento</span>`
+    : '';
+  return `<tr>
+    <td><span class="sku-tag">#${s.id}</span></td>
+    <td>${prod.name}${descuentoTag}</td>
+    <td>${s.quantity} u.</td>
+    <td>${precioUnit}</td>
+    <td><strong>${total}</strong></td>
+    <td><button class="btn btn-secondary" style="padding:4px 8px;font-size:12px;color:var(--danger);border-color:var(--danger)" onclick="deleteSale(${s.id})">✕</button></td>
+  </tr>`;
+}).join('');
     } catch {
       document.getElementById('sales-tbody').innerHTML =
         '<tr><td colspan="6" class="empty-state">No se pudo conectar con la API</td></tr>';
