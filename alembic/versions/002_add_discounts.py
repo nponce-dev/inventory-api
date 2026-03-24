@@ -2,7 +2,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision = '002_add_discounts'
-down_revision = '001_add_precio_venta_and_purchases'
+down_revision = '001'
 
 def upgrade():
     op.create_table('discounts',
