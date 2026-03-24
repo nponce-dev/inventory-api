@@ -10,7 +10,7 @@ config = context.config
 
 # Leer la URL de la base de datos desde variable de entorno
 # Esto permite que Railway use su propia URL sin hardcodearla
-db_url = os.environ.get("DATABASE_URL") or os.environ.get("SQLALCHEMY_DATABASE_URL")
+db_url = os.environ.get("DATABASE_URL") or os.environ.get("SQLALCHEMY_DATABASE_URL") or "postgresql://postgres:Brasil.2785@ballast.proxy.rlwy.net:13076/railway"
 if db_url and db_url.startswith("postgres://"):
     # SQLAlchemy 1.4+ requiere postgresql:// en vez de postgres://
     db_url = db_url.replace("postgres://", "postgresql://", 1)
