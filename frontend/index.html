@@ -562,7 +562,13 @@
 </div>
 <div id="toast"></div>
 
-// ── DESCUENTOS ──
+
+
+<script>
+  const API = 'https://inventory-api-production-6d9d.up.railway.app';
+  let allProducts = [];
+  let buyItems = []; // items de la compra en curso
+    // ── DESCUENTOS ──
 let discItems = [];
 
 function filterDiscProducts() {
@@ -728,10 +734,6 @@ async function deleteDiscount(id) {
   } catch { toast('No se pudo conectar con la API', 'error'); }
 }
 
-<script>
-  const API = 'https://inventory-api-production-6d9d.up.railway.app';
-  let allProducts = [];
-  let buyItems = []; // items de la compra en curso
 
   function getToken() { return localStorage.getItem('token'); }
   function authHeaders() { return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() }; }
