@@ -9,7 +9,8 @@ from app.auth import USERS, verify_password, create_token, get_current_user
 
 app = FastAPI(title="Inventario API")
 
-Base.metadata.create_all(bind=engine, checkfirst=True)
+import subprocess
+subprocess.run(["python", "-m", "alembic", "upgrade", "head"], check=True)
 
 app.add_middleware(
     CORSMiddleware,
