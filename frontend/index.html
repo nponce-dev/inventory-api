@@ -990,14 +990,23 @@ async function registerSale() {
   const product = allProducts.find(p => p.sku === sku);
 
   let precio_unitario_real = null;
+
   try {
     const discRes = await fetch(API + '/discounts/', { headers: authHeaders() });
     const discounts = await discRes.json();
+    
+    console.log('Descuentos encontrados:', discounts);
+    console.log('Producto:', product);
+    console.log('Cantidad:', quantity);
+    
     const coincidencias = discounts.filter(d =>
       d.items.length === 1 &&
       d.items[0].product_id === product?.id &&
       d.items[0].quantity === quantity
     );
+    
+    console.log('Coincidencias:', coincidencias);
+    
     if (coincidencias.length > 0) {
       const d = coincidencias[0];
       const precioNormal = product?.precio_venta ? product.precio_venta * quantity : null;
@@ -1006,13 +1015,17 @@ async function registerSale() {
         : `¿Aplicar descuento "${d.name}"?\nPrecio combo: $${d.precio_descuento.toFixed(2)}`;
       if (confirm(msg)) {
         precio_unitario_real = d.precio_descuento / quantity;
+        console.log('Precio unitario real:', precio_unitario_real);
       }
     }
-  } catch { }
+  } catch (e) { console.error('Error descuentos:', e); }
+
+  const body = { sku, quantity };
+  if (precio_unitario_real !== null) body.precio_unitario_real = precio_unitario_real;
+  
+  console.log('Body a enviar:', body);
 
   try {
-    const body = { sku, quantity };
-    if (precio_unitario_real !== null) body.precio_unitario_real = precio_unitario_real;
     const res = await fetch(API + '/sales/', {
       method: 'POST', headers: authHeaders(),
       body: JSON.stringify(body)
