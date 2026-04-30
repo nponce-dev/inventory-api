@@ -45,6 +45,7 @@ class SaleResponse(BaseModel):
     id: int
     product_id: int
     quantity: int
+    precio_unitario_real: Optional[float] = None
 
 
 # =========================
@@ -54,7 +55,6 @@ class SaleResponse(BaseModel):
 class PurchaseItemCreate(BaseModel):
     product_id: int
     quantity: int = Field(gt=0)
-    precio_unitario_real: Optional[float] = Field(default=None, ge=0)
 
 
 class PurchaseCreate(BaseModel):
@@ -76,29 +76,20 @@ class PurchaseResponse(BaseModel):
     fecha: datetime
     items: List[PurchaseItemResponse]
 
-
-# =========================
-# DISCOUNT
-# =========================
-
 class DiscountItemCreate(BaseModel):
     product_id: int
     quantity: int = Field(gt=0)
-    precio_unitario_real: Optional[float] = Field(default=None, ge=0)
-
 
 class DiscountCreate(BaseModel):
     name: str
     precio_descuento: float = Field(gt=0)
     items: List[DiscountItemCreate]
 
-
 class DiscountItemResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
     product_id: int
     quantity: int
-
 
 class DiscountResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
