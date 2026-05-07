@@ -184,3 +184,74 @@ def delete_discount(db, discount_id):
     db.delete(d)
     db.commit()
     return {"message": "Descuento eliminado"}
+
+# =========================
+# SERVICIOS
+# =========================
+
+def create_servicio(db: Session, servicio: schemas.ServicioCreate):
+    for item in servicio.items:
+        product = get_product_by_id(db, item.product_id)
+        if product.stock < item.quantity:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Stock insuficiente para {product.name}"
+            )
+
+    db_servicio = models.Servicio(
+        tipo=servicio.tipo,
+        cliente_nombre=servicio.cliente_nombre,
+        mascota_nombre=servicio.mascota_nombre,
+        precio_cobrado=servicio.precio_cobrado
+    )
+    db.add(db_servicio)
+    db.flush()
+
+    for item in servicio.items:
+        product = get_product_by_id(db, item.product_id)
+        product.stock -= item.quantity
+        db_item = models.ServicioItem(
+            servicio_id=db_servicio.id,
+            product_id=item.product_id,
+            quantity=item.quantity
+        )
+        db.add(db_item)
+
+    db.commit()
+    db.refresh(db_servicio)
+    return db_servicio
+
+
+def get_servicios(db: Session):
+    return db.query(models.Servicio).order_by(models.Servicio.fecha.desc()).all()
+
+
+def get_servicio_by_id(db: Session, servicio_id: int):
+    servicio = db.query(models.Servicio).filter(models.Servicio.id == servicio_id).first()
+    if not servicio:
+        raise HTTPException(status_code=404, detail="Servicio no encontrado")
+    return servicio
+
+
+def delete_servicio(db: Session, servicio_id: int):
+    servicio = get_servicio_by_id(db, servicio_id)
+    for item in servicio.items:
+        product = get_product_by_id(db, item.product_id)
+        if product:
+            product.stock += item.quantity
+    db.query(models.ServicioItem).filter(models.ServicioItem.servicio_id == servicio_id).delete()
+    db.delete(servicio)
+    db.commit()
+    return {"message": "Servicio eliminado y stock restaurado"}
+
+
+def get_servicios_total(db: Session):
+    servicios = db.query(models.Servicio).all()
+    ingresos = sum(s.precio_cobrado for s in servicios)
+    costo_productos = 0.0
+    for servicio in servicios:
+        for item in servicio.items:
+            product = get_product_by_id(db, item.product_id)
+            if product and product.precio_venta:
+                costo_productos += product.precio_venta * item.quantity
+    return {"ingresos": ingresos, "costo_productos": costo_productos} 

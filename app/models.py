@@ -65,3 +65,27 @@ class DiscountItem(Base):
     quantity = Column(Integer, nullable=False)
     discount = relationship("Discount", back_populates="items")
     product = relationship("Product")
+
+class Servicio(Base):
+    __tablename__ = "servicios"
+
+    id = Column(Integer, primary_key=True, index=True)
+    tipo = Column(String, nullable=False)  # Clase / Guarderia / Pet Sitter
+    cliente_nombre = Column(String, nullable=False)
+    mascota_nombre = Column(String, nullable=False)
+    precio_cobrado = Column(Float, nullable=False)
+    fecha = Column(DateTime(timezone=True), server_default=func.now())
+
+    items = relationship("ServicioItem", back_populates="servicio")
+
+
+class ServicioItem(Base):
+    __tablename__ = "servicio_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    servicio_id = Column(Integer, ForeignKey("servicios.id"), nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    quantity = Column(Integer, nullable=False)
+
+    servicio = relationship("Servicio", back_populates="items")
+    product = relationship("Product")

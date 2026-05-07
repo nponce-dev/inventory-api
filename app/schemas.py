@@ -98,3 +98,37 @@ class DiscountResponse(BaseModel):
     precio_descuento: float
     fecha: datetime
     items: List[DiscountItemResponse]
+
+# =========================
+# SERVICIOS
+# =========================
+
+class ServicioItemCreate(BaseModel):
+    product_id: int
+    quantity: int = Field(gt=0)
+
+
+class ServicioCreate(BaseModel):
+    tipo: str
+    cliente_nombre: str
+    mascota_nombre: str
+    precio_cobrado: float = Field(gt=0)
+    items: List[ServicioItemCreate]
+
+
+class ServicioItemResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    product_id: int
+    quantity: int
+
+
+class ServicioResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    tipo: str
+    cliente_nombre: str
+    mascota_nombre: str
+    precio_cobrado: float
+    fecha: Optional[datetime] = None
+    items: List[ServicioItemResponse]
