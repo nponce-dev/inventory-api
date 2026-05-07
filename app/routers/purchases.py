@@ -20,12 +20,21 @@ def get_purchases(db: Session = Depends(get_db)):
 def get_summary(db: Session = Depends(get_db)):
     total_compras = crud.get_purchase_total(db)
     total_ventas = crud.get_sales_total(db)
+    servicios_data = crud.get_servicios_total(db)
+    total_servicios = servicios_data["ingresos"]
+    costo_productos_servicios = servicios_data["costo_productos"]
+    
+    total_ingresos = total_ventas + total_servicios
+    total_gastos = total_compras + costo_productos_servicios
+    
     return {
         "total_compras": round(total_compras, 2),
         "total_ventas": round(total_ventas, 2),
-        "ganancia_neta": round(total_ventas - total_compras, 2)
+        "total_servicios": round(total_servicios, 2),
+        "costo_productos_servicios": round(costo_productos_servicios, 2),
+        "total_ingresos": round(total_ingresos, 2),
+        "ganancia_neta": round(total_ingresos - total_gastos, 2)
     }
-
 
 @router.delete("/{purchase_id}")
 def delete_purchase(purchase_id: int, db: Session = Depends(get_db)):

@@ -476,23 +476,38 @@
         <p>Resumen de ingresos, gastos y ganancia neta</p>
       </div>
 
-      <div class="accounting-grid">
-        <div class="accounting-card">
-          <div class="ac-label">💰 Total vendido</div>
-          <div class="ac-value green" id="ac-ventas">—</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:6px">Precio de venta × cantidad</div>
-        </div>
-        <div class="accounting-card">
-          <div class="ac-label">🛒 Total gastado en compras</div>
-          <div class="ac-value red" id="ac-compras">—</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:6px">Suma de todas las compras</div>
-        </div>
-        <div class="accounting-card" id="ac-ganancia-card">
-          <div class="ac-label">📊 Ganancia neta</div>
-          <div class="ac-value neutral" id="ac-ganancia">—</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:6px">Ventas − Compras</div>
-        </div>
-      </div>
+      <div class="accounting-grid" style="grid-template-columns: repeat(3, 1fr)">
+  <div class="accounting-card">
+    <div class="ac-label">💰 Total vendido</div>
+    <div class="ac-value green" id="ac-ventas">—</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:6px">Productos vendidos</div>
+  </div>
+  <div class="accounting-card">
+    <div class="ac-label">🐾 Total servicios</div>
+    <div class="ac-value green" id="ac-servicios">—</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:6px">Clases, guardería, pet sitter</div>
+  </div>
+  <div class="accounting-card">
+    <div class="ac-label">🛒 Total compras</div>
+    <div class="ac-value red" id="ac-compras">—</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:6px">Suma de todas las compras</div>
+  </div>
+  <div class="accounting-card">
+    <div class="ac-label">📦 Productos usados en servicios</div>
+    <div class="ac-value red" id="ac-costo-servicios">—</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:6px">Costo de productos utilizados</div>
+  </div>
+  <div class="accounting-card">
+    <div class="ac-label">💵 Total ingresos</div>
+    <div class="ac-value green" id="ac-ingresos">—</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:6px">Ventas + Servicios</div>
+  </div>
+  <div class="accounting-card" id="ac-ganancia-card">
+    <div class="ac-label">📊 Ganancia neta</div>
+    <div class="ac-value neutral" id="ac-ganancia">—</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:6px">Ingresos − Gastos</div>
+  </div>
+</div>
 
       <!-- Subsolapas -->
       <div style="display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:1rem">
@@ -1348,52 +1363,56 @@ async function registerSale() {
   }
 
   // ── CONTABILIDAD ──
-  async function loadContabilidad() {
-    try {
-      const [summaryRes, purchasesRes, productsRes] = await Promise.all([
-        fetch(API + '/purchases/summary', { headers: authHeaders() }),
-        fetch(API + '/purchases/', { headers: authHeaders() }),
-        fetch(API + '/products/', { headers: authHeaders() })
-      ]);
-      const summary = await summaryRes.json();
-      const purchases = await purchasesRes.json();
-      const products = await productsRes.json();
-      const productMap = {};
-      products.forEach(p => productMap[p.id] = p.name);
+async function loadContabilidad() {
+  try {
+    const [summaryRes, purchasesRes, productsRes] = await Promise.all([
+      fetch(API + '/purchases/summary', { headers: authHeaders() }),
+      fetch(API + '/purchases/', { headers: authHeaders() }),
+      fetch(API + '/products/', { headers: authHeaders() })
+    ]);
+    const summary = await summaryRes.json();
+    const purchases = await purchasesRes.json();
+    const products = await productsRes.json();
+    const productMap = {};
+    products.forEach(p => productMap[p.id] = p.name);
 
-      document.getElementById('ac-ventas').textContent = `$${summary.total_ventas.toFixed(2)}`;
-      document.getElementById('ac-compras').textContent = `$${summary.total_compras.toFixed(2)}`;
-      const ganancia = summary.ganancia_neta;
-      const gEl = document.getElementById('ac-ganancia');
-      const gCard = document.getElementById('ac-ganancia-card');
-      gEl.textContent = `$${ganancia.toFixed(2)}`;
-      gEl.className = 'ac-value ' + (ganancia > 0 ? 'green' : ganancia < 0 ? 'red' : 'neutral');
-      gCard.className = 'accounting-card ' + (ganancia > 0 ? 'ganancia' : ganancia < 0 ? 'perdida' : '');
+    document.getElementById('ac-ventas').textContent = `$${summary.total_ventas.toFixed(2)}`;
+    document.getElementById('ac-compras').textContent = `$${summary.total_compras.toFixed(2)}`;
+    document.getElementById('ac-servicios').textContent = `$${summary.total_servicios.toFixed(2)}`;
+    document.getElementById('ac-costo-servicios').textContent = `$${summary.costo_productos_servicios.toFixed(2)}`;
+    document.getElementById('ac-ingresos').textContent = `$${summary.total_ingresos.toFixed(2)}`;
 
-      // Tabla de compras
-      const tbody = document.getElementById('purchases-tbody');
-      if (!purchases.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No hay compras registradas todavía</td></tr>';
-      } else {
-        tbody.innerHTML = purchases.map(p => {
-          const fecha = new Date(p.fecha).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' });
-          const itemsText = p.items.map(i => `${productMap[i.product_id] || '#'+i.product_id} ×${i.quantity}`).join(', ');
-          return `<tr>
-            <td><span class="sku-tag">#${p.id}</span></td>
-            <td>${fecha}</td>
-            <td style="font-size:12px;color:var(--muted)">${itemsText}</td>
-            <td><strong>$${p.precio_total.toFixed(2)}</strong></td>
-            <td><button class="btn btn-secondary" style="padding:4px 8px;font-size:12px;color:var(--danger);border-color:var(--danger)" onclick="deletePurchase(${p.id})">✕</button></td>
-          </tr>`;
-        }).join('');
-      }
+    const ganancia = summary.ganancia_neta;
+    const gEl = document.getElementById('ac-ganancia');
+    const gCard = document.getElementById('ac-ganancia-card');
+    gEl.textContent = `$${ganancia.toFixed(2)}`;
+    gEl.className = 'ac-value ' + (ganancia > 0 ? 'green' : ganancia < 0 ? 'red' : 'neutral');
+    gCard.className = 'accounting-card ' + (ganancia > 0 ? 'ganancia' : ganancia < 0 ? 'perdida' : '');
 
-      await loadSales();
-    } catch {
-      document.getElementById('purchases-tbody').innerHTML =
-        '<tr><td colspan="5" class="empty-state">No se pudo conectar con la API</td></tr>';
+    // Tabla de compras
+    const tbody = document.getElementById('purchases-tbody');
+    if (!purchases.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No hay compras registradas todavía</td></tr>';
+    } else {
+      tbody.innerHTML = purchases.map(p => {
+        const fecha = new Date(p.fecha).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' });
+        const itemsText = p.items.map(i => `${productMap[i.product_id] || '#'+i.product_id} ×${i.quantity}`).join(', ');
+        return `<tr>
+          <td><span class="sku-tag">#${p.id}</span></td>
+          <td>${fecha}</td>
+          <td style="font-size:12px;color:var(--muted)">${itemsText}</td>
+          <td><strong>$${p.precio_total.toFixed(2)}</strong></td>
+          <td><button class="btn btn-secondary" style="padding:4px 8px;font-size:12px;color:var(--danger);border-color:var(--danger)" onclick="deletePurchase(${p.id})">✕</button></td>
+        </tr>`;
+      }).join('');
     }
+
+    await loadSales();
+  } catch {
+    document.getElementById('purchases-tbody').innerHTML =
+      '<tr><td colspan="5" class="empty-state">No se pudo conectar con la API</td></tr>';
   }
+}
   // ── SERVICIOS ──
 let servItems = [];
 
