@@ -260,6 +260,7 @@
     <button class="nav-btn" onclick="showSection('venta', this)">Registrar venta</button>
     <button class="nav-btn" onclick="showSection('compras', this)">Registrar compra</button>
     <button class="nav-btn" onclick="showSection('descuentos', this)">Descuentos</button>
+    <button class="nav-btn" onclick="showSection('servicios', this)">Servicios</button>
     <button class="nav-btn" onclick="showSection('contabilidad', this)">Contabilidad</button>
   </nav>
 
@@ -525,7 +526,103 @@
         </div>
       </div>
     </div>
+<!-- SERVICIOS -->
+<div class="section" id="sec-servicios">
+  <div class="section-header">
+    <h2>Registrar servicio</h2>
+    <p>Clases, guardería y pet sitter</p>
+  </div>
+  <div class="card">
+    <div class="form-grid three">
+      <div class="form-group">
+        <label>Tipo de servicio</label>
+        <select id="serv-tipo">
+          <option value="">Seleccioná un tipo...</option>
+          <option value="Clase">Clase</option>
+          <option value="Guarderia">Guardería</option>
+          <option value="Pet Sitter">Pet Sitter</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Nombre del cliente</label>
+        <input type="text" id="serv-cliente" placeholder="Ej: Juan García">
+      </div>
+      <div class="form-group">
+        <label>Nombre de la mascota</label>
+        <input type="text" id="serv-mascota" placeholder="Ej: Firulais">
+      </div>
+    </div>
 
+    <div class="form-grid" style="margin-top:12px">
+      <div class="form-group">
+        <label>Precio cobrado ($)</label>
+        <input type="number" id="serv-precio" placeholder="0.00" min="0" step="0.01">
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section-header" style="margin-bottom:12px">
+      <h2 style="font-size:15px">Productos utilizados</h2>
+      <p>Opcional — se descuenta del stock automáticamente</p>
+    </div>
+
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Producto</label>
+        <input type="text" id="serv-search" placeholder="Escribí el nombre o SKU..." oninput="filterServProducts()" autocomplete="off">
+        <div id="serv-suggestions" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;margin-top:4px;display:none;max-height:200px;overflow-y:auto;"></div>
+        <input type="hidden" id="serv-product-id">
+        <input type="hidden" id="serv-product-name">
+      </div>
+      <div class="form-group">
+        <label>Cantidad</label>
+        <input type="number" id="serv-qty" placeholder="1" min="1">
+      </div>
+    </div>
+    <div style="margin-top:10px;text-align:right">
+      <button class="btn btn-secondary" onclick="addServItem()">+ Agregar producto</button>
+    </div>
+
+    <div id="serv-items-list" class="purchase-items-list" style="display:none"></div>
+
+    <div class="form-footer">
+      <span style="font-size:12px;color:var(--muted)" id="serv-items-count">Ningún producto agregado</span>
+      <button class="btn btn-primary" onclick="registerServicio()">Registrar servicio</button>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="section-header">
+    <h2>Historial de servicios</h2>
+    <p>Todos los servicios registrados</p>
+  </div>
+  <div class="card">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:1rem">
+      <button class="btn btn-secondary" onclick="loadServicios()">↺ Actualizar</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Tipo</th>
+            <th>Cliente</th>
+            <th>Mascota</th>
+            <th>Productos usados</th>
+            <th>Precio cobrado</th>
+            <th>Fecha</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="servicios-tbody">
+          <tr><td colspan="8" class="empty-state">Cargando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
   </main>
 </div>
 
@@ -788,6 +885,7 @@ async function deleteDiscount(id) {
     if (name === 'compras') loadProducts();
     if (name === 'descuentos') loadDiscounts();
     if (name === 'contabilidad') { loadContabilidad(); showSubTab('ventas'); }
+    if (name === 'servicios') { loadServicios(); loadProducts(); }
   }
 
   function toast(msg, type = 'success') {
@@ -1296,6 +1394,166 @@ async function registerSale() {
         '<tr><td colspan="5" class="empty-state">No se pudo conectar con la API</td></tr>';
     }
   }
+  // ── SERVICIOS ──
+let servItems = [];
+
+function filterServProducts() {
+  const q = document.getElementById('serv-search').value.toLowerCase();
+  const box = document.getElementById('serv-suggestions');
+  document.getElementById('serv-product-id').value = '';
+  if (!q) { box.style.display = 'none'; return; }
+  const matches = allProducts.filter(p =>
+    p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q)
+  ).slice(0, 8);
+  if (!matches.length) { box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  box.innerHTML = matches.map(p => `
+    <div onclick="selectServProduct(${p.id}, '${p.name}')"
+      style="padding:10px 12px;cursor:pointer;font-size:13px;border-bottom:0.5px solid var(--border);display:flex;justify-content:space-between;align-items:center"
+      onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+      <span>${p.name}</span>
+      <span class="sku-tag">${p.sku} · ${p.stock} u.</span>
+    </div>
+  `).join('');
+}
+
+function selectServProduct(id, name) {
+  document.getElementById('serv-product-id').value = id;
+  document.getElementById('serv-product-name').value = name;
+  document.getElementById('serv-search').value = name;
+  document.getElementById('serv-suggestions').style.display = 'none';
+}
+
+function addServItem() {
+  const product_id = parseInt(document.getElementById('serv-product-id').value);
+  const name = document.getElementById('serv-product-name').value;
+  const quantity = parseInt(document.getElementById('serv-qty').value);
+  if (!product_id) { toast('Seleccioná un producto de la lista', 'error'); return; }
+  if (isNaN(quantity) || quantity < 1) { toast('Ingresá una cantidad válida', 'error'); return; }
+  const existing = servItems.find(i => i.product_id === product_id);
+  if (existing) {
+    existing.quantity += quantity;
+  } else {
+    servItems.push({ product_id, name, quantity });
+  }
+  renderServItems();
+  document.getElementById('serv-search').value = '';
+  document.getElementById('serv-product-id').value = '';
+  document.getElementById('serv-product-name').value = '';
+  document.getElementById('serv-qty').value = '';
+}
+
+function renderServItems() {
+  const list = document.getElementById('serv-items-list');
+  const counter = document.getElementById('serv-items-count');
+  if (!servItems.length) {
+    list.style.display = 'none';
+    counter.textContent = 'Ningún producto agregado';
+    return;
+  }
+  list.style.display = 'flex';
+  counter.textContent = `${servItems.length} producto(s) agregado(s)`;
+  list.innerHTML = servItems.map((item, idx) => `
+    <div class="purchase-item-row">
+      <span class="item-name">${item.name}</span>
+      <span class="item-qty">${item.quantity} u.</span>
+      <button class="btn btn-danger btn-remove" onclick="removeServItem(${idx})">✕</button>
+    </div>
+  `).join('');
+}
+
+function removeServItem(idx) {
+  servItems.splice(idx, 1);
+  renderServItems();
+}
+
+async function registerServicio() {
+  const tipo = document.getElementById('serv-tipo').value;
+  const cliente_nombre = document.getElementById('serv-cliente').value.trim();
+  const mascota_nombre = document.getElementById('serv-mascota').value.trim();
+  const precio_cobrado = parseFloat(document.getElementById('serv-precio').value);
+
+  if (!tipo) { toast('Seleccioná un tipo de servicio', 'error'); return; }
+  if (!cliente_nombre) { toast('Ingresá el nombre del cliente', 'error'); return; }
+  if (!mascota_nombre) { toast('Ingresá el nombre de la mascota', 'error'); return; }
+  if (isNaN(precio_cobrado) || precio_cobrado <= 0) { toast('Ingresá el precio cobrado', 'error'); return; }
+
+  const body = {
+    tipo,
+    cliente_nombre,
+    mascota_nombre,
+    precio_cobrado,
+    items: servItems.map(i => ({ product_id: i.product_id, quantity: i.quantity }))
+  };
+
+  try {
+    const res = await fetch(API + '/servicios/', {
+      method: 'POST', headers: authHeaders(),
+      body: JSON.stringify(body)
+    });
+    if (res.ok) {
+      toast('Servicio registrado correctamente');
+      servItems = [];
+      renderServItems();
+      document.getElementById('serv-tipo').value = '';
+      document.getElementById('serv-cliente').value = '';
+      document.getElementById('serv-mascota').value = '';
+      document.getElementById('serv-precio').value = '';
+      loadServicios();
+      loadProducts();
+    } else {
+      const err = await res.json();
+      toast(err.detail || 'Error al registrar', 'error');
+    }
+  } catch { toast('No se pudo conectar con la API', 'error'); }
+}
+
+async function loadServicios() {
+  try {
+    const [servRes, productsRes] = await Promise.all([
+      fetch(API + '/servicios/', { headers: authHeaders() }),
+      fetch(API + '/products/', { headers: authHeaders() })
+    ]);
+    const servicios = await servRes.json();
+    const products = await productsRes.json();
+    const productMap = {};
+    products.forEach(p => productMap[p.id] = p.name);
+
+    const tbody = document.getElementById('servicios-tbody');
+    if (!servicios.length) {
+      tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No hay servicios registrados todavía</td></tr>';
+      return;
+    }
+    tbody.innerHTML = servicios.map(s => {
+      const fecha = new Date(s.fecha).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const itemsText = s.items.length
+        ? s.items.map(i => `${productMap[i.product_id] || '#' + i.product_id} ×${i.quantity}`).join(', ')
+        : '<span style="color:var(--muted)">Sin productos</span>';
+      return `<tr>
+        <td><span class="sku-tag">#${s.id}</span></td>
+        <td><span style="font-size:12px;background:var(--accent-light);color:var(--accent);border-radius:4px;padding:2px 8px">${s.tipo}</span></td>
+        <td>${s.cliente_nombre}</td>
+        <td>${s.mascota_nombre}</td>
+        <td style="font-size:12px;color:var(--muted)">${itemsText}</td>
+        <td><strong style="color:var(--accent)">$${s.precio_cobrado.toFixed(2)}</strong></td>
+        <td style="font-size:12px;color:var(--muted)">${fecha}</td>
+        <td><button class="btn btn-secondary" style="padding:4px 8px;font-size:12px;color:var(--danger);border-color:var(--danger)" onclick="deleteServicio(${s.id})">✕</button></td>
+      </tr>`;
+    }).join('');
+  } catch {
+    document.getElementById('servicios-tbody').innerHTML =
+      '<tr><td colspan="8" class="empty-state">No se pudo conectar con la API</td></tr>';
+  }
+}
+
+async function deleteServicio(id) {
+  if (!confirm('¿Eliminar este servicio? El stock de los productos se va a restaurar.')) return;
+  try {
+    const res = await fetch(API + '/servicios/' + id, { method: 'DELETE', headers: authHeaders() });
+    if (res.ok) { toast('Servicio eliminado — stock restaurado'); loadServicios(); loadProducts(); }
+    else { toast('Error al eliminar', 'error'); }
+  } catch { toast('No se pudo conectar con la API', 'error'); }
+}
 </script>
 </body>
 </html>

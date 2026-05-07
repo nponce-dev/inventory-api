@@ -88,4 +88,4 @@ class ServicioItem(Base):
     quantity = Column(Integer, nullable=False)
 
     servicio = relationship("Servicio", back_populates="items")
-    product = relationship("Product")
+    product = relationship("Product")   
