@@ -522,7 +522,15 @@
             <button class="btn btn-secondary" id="filtro-todo" onclick="setFiltroVentas('todo')" style="background:var(--accent);color:white">Todo</button>
             <button class="btn btn-secondary" id="filtro-mes" onclick="setFiltroVentas('mes')">Este mes</button>
             <button class="btn btn-secondary" id="filtro-semana" onclick="setFiltroVentas('semana')">Esta semana</button>
-          </div>   
+            <select id="orden-ventas" onchange="loadSales()" style="font-size:13px;padding:7px 10px">
+             <option value="fecha-desc">Fecha ↓ (más reciente)</option>
+             <option value="fecha-asc">Fecha ↑ (más antigua)</option>
+             <option value="precio-desc">Precio ↓</option>
+             <option value="precio-asc">Precio ↑</option>
+             <option value="unidades-desc">Unidades ↓</option>
+             <option value="unidades-asc">Unidades ↑</option>
+            </select>
+          </div>    
           <button class="btn btn-secondary" onclick="loadContabilidad()">↺ Actualizar</button>
         </div>
         <div class="table-wrap">
@@ -619,7 +627,13 @@
     <p>Todos los servicios registrados</p>
   </div>
   <div class="card">
-    <div style="display:flex;justify-content:flex-end;margin-bottom:1rem">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+      <select id="orden-servicios" onchange="loadServicios()" style="font-size:13px;padding:7px 10px">
+       <option value="fecha-desc">Fecha ↓ (más reciente)</option>
+       <option value="fecha-asc">Fecha ↑ (más antigua)</option>
+       <option value="precio-desc">Precio ↓</option>
+       <option value="precio-asc">Precio ↑</option>
+      </select>
       <button class="btn btn-secondary" onclick="loadServicios()">↺ Actualizar</button>
     </div>
     <div class="table-wrap">
@@ -1357,6 +1371,28 @@ function filtrarPorFecha(items) {
     return true;
   });
 }
+function ordenarVentas(items, productMap) {
+  const orden = document.getElementById('orden-ventas')?.value || 'fecha-desc';
+  return [...items].sort((a, b) => {
+    switch(orden) {
+      case 'fecha-desc': return new Date(b.fecha) - new Date(a.fecha);
+      case 'fecha-asc': return new Date(a.fecha) - new Date(b.fecha);
+      case 'precio-desc': {
+        const pA = a.precio_unitario_real ?? productMap[a.product_id]?.precio ?? 0;
+        const pB = b.precio_unitario_real ?? productMap[b.product_id]?.precio ?? 0;
+        return (pB * b.quantity) - (pA * a.quantity);
+      }
+      case 'precio-asc': {
+        const pA = a.precio_unitario_real ?? productMap[a.product_id]?.precio ?? 0;
+        const pB = b.precio_unitario_real ?? productMap[b.product_id]?.precio ?? 0;
+        return (pA * a.quantity) - (pB * b.quantity);
+      }
+      case 'unidades-desc': return b.quantity - a.quantity;
+      case 'unidades-asc': return a.quantity - b.quantity;
+      default: return 0;
+    }
+  });
+}
   // ── HISTORIAL VENTAS ──
   async function loadSales() {
     try {
@@ -1373,7 +1409,7 @@ function filtrarPorFecha(items) {
         tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No hay ventas registradas todavía</td></tr>';
         return;
       }
-      const salesFiltradas = filtrarPorFecha(sales);
+      const salesFiltradas = ordenarVentas(filtrarPorFecha(sales), productMap);
       if (!salesFiltradas.length) {
         tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No hay ventas en este período</td></tr>';
         return;
@@ -1566,6 +1602,19 @@ async function registerServicio() {
   } catch { toast('No se pudo conectar con la API', 'error'); }
 }
 
+function ordenarServicios(items) {
+  const orden = document.getElementById('orden-servicios')?.value || 'fecha-desc';
+  return [...items].sort((a, b) => {
+    switch(orden) {
+      case 'fecha-desc': return new Date(b.fecha) - new Date(a.fecha);
+      case 'fecha-asc': return new Date(a.fecha) - new Date(b.fecha);
+      case 'precio-desc': return b.precio_cobrado - a.precio_cobrado;
+      case 'precio-asc': return a.precio_cobrado - b.precio_cobrado;
+      default: return 0;
+    }
+  });
+}
+
 async function loadServicios() {
   try {
     const [servRes, productsRes] = await Promise.all([
@@ -1582,7 +1631,8 @@ async function loadServicios() {
       tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No hay servicios registrados todavía</td></tr>';
       return;
     }
-    tbody.innerHTML = servicios.map(s => {
+    const serviciosOrdenados = ordenarServicios(servicios);
+    tbody.innerHTML = serviciosOrdenados.map(s => {
       const fecha = new Date(s.fecha).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
       const itemsText = s.items.length
         ? s.items.map(i => `${productMap[i.product_id] || '#' + i.product_id} ×${i.quantity}`).join(', ')
