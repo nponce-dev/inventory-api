@@ -24,6 +24,7 @@ class Sale(Base):
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
     quantity = Column(Integer, nullable=False)
     precio_unitario_real = Column(Float, nullable=True, default=None)
+    fecha = Column(DateTime(timezone=True), server_default=func.now())
 
     product = relationship("Product", back_populates="sales")
 
