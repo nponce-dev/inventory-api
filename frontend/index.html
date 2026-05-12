@@ -517,7 +517,12 @@
 
       <!-- Historial ventas -->
       <div id="sub-ventas" class="card">
-        <div style="display:flex;justify-content:flex-end;margin-bottom:1rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-secondary" id="filtro-todo" onclick="setFiltroVentas('todo')" style="background:var(--accent);color:white">Todo</button>
+            <button class="btn btn-secondary" id="filtro-mes" onclick="setFiltroVentas('mes')">Este mes</button>
+            <button class="btn btn-secondary" id="filtro-semana" onclick="setFiltroVentas('semana')">Esta semana</button>
+          </div>   
           <button class="btn btn-secondary" onclick="loadContabilidad()">↺ Actualizar</button>
         </div>
         <div class="table-wrap">
@@ -1322,7 +1327,36 @@ async function registerSale() {
       else { toast('Error al eliminar', 'error'); }
     } catch { toast('No se pudo conectar con la API', 'error'); }
   }
+// ── FILTRO VENTAS ──
+let filtroVentas = 'todo';
 
+function setFiltroVentas(filtro) {
+  filtroVentas = filtro;
+  document.getElementById('filtro-todo').style.background = filtro === 'todo' ? 'var(--accent)' : '';
+  document.getElementById('filtro-todo').style.color = filtro === 'todo' ? 'white' : '';
+  document.getElementById('filtro-mes').style.background = filtro === 'mes' ? 'var(--accent)' : '';
+  document.getElementById('filtro-mes').style.color = filtro === 'mes' ? 'white' : '';
+  document.getElementById('filtro-semana').style.background = filtro === 'semana' ? 'var(--accent)' : '';
+  document.getElementById('filtro-semana').style.color = filtro === 'semana' ? 'white' : '';
+  loadSales();
+}
+
+function filtrarPorFecha(items) {
+  if (filtroVentas === 'todo') return items;
+  const ahora = new Date();
+  return items.filter(s => {
+    if (!s.fecha) return true;
+    const fecha = new Date(s.fecha);
+    if (filtroVentas === 'mes') {
+      return fecha.getMonth() === ahora.getMonth() && fecha.getFullYear() === ahora.getFullYear();
+    }
+    if (filtroVentas === 'semana') {
+      const diff = (ahora - fecha) / (1000 * 60 * 60 * 24);
+      return diff <= 7;
+    }
+    return true;
+  });
+}
   // ── HISTORIAL VENTAS ──
   async function loadSales() {
     try {
@@ -1339,7 +1373,12 @@ async function registerSale() {
         tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No hay ventas registradas todavía</td></tr>';
         return;
       }
-        tbody.innerHTML = sales.map(s => {
+      const salesFiltradas = filtrarPorFecha(sales);
+      if (!salesFiltradas.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No hay ventas en este período</td></tr>';
+        return;
+      }
+        tbody.innerHTML = salesFiltradas.map(s => {
   const prod = productMap[s.product_id] || { name: 'Producto #' + s.product_id, precio: null };
   const precioUnitReal = s.precio_unitario_real !== null && s.precio_unitario_real !== undefined ? s.precio_unitario_real : prod.precio;
   const precioUnit = precioUnitReal != null ? `$${precioUnitReal.toFixed(2)}` : '—';
@@ -1549,7 +1588,7 @@ async function loadServicios() {
         ? s.items.map(i => `${productMap[i.product_id] || '#' + i.product_id} ×${i.quantity}`).join(', ')
         : '<span style="color:var(--muted)">Sin productos</span>';
       return `<tr>
-        <td><span class="sku-tag">#${s.id}</span></td>
+        <td style="font-size:12px;color:var(--muted)">${s.fecha ? new Date(s.fecha).toLocaleString('es-AR', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'}) : '—'}</td>
         <td><span style="font-size:12px;background:var(--accent-light);color:var(--accent);border-radius:4px;padding:2px 8px">${s.tipo}</span></td>
         <td>${s.cliente_nombre}</td>
         <td>${s.mascota_nombre}</td>
@@ -1573,6 +1612,7 @@ async function deleteServicio(id) {
     else { toast('Error al eliminar', 'error'); }
   } catch { toast('No se pudo conectar con la API', 'error'); }
 }
+
 </script>
 </body>
 </html>

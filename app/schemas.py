@@ -46,6 +46,7 @@ class SaleResponse(BaseModel):
     product_id: int
     quantity: int
     precio_unitario_real: Optional[float] = None
+    fecha: Optional[datetime] = None
 
 
 # =========================
