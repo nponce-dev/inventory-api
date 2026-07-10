@@ -8,5 +8,6 @@ passlib
 python-multipart
 alembic
 openpyxl
+requests
 # force rebuild
 
