@@ -133,3 +133,28 @@ class ServicioResponse(BaseModel):
     precio_cobrado: float
     fecha: Optional[datetime] = None
     items: List[ServicioItemResponse]
+
+# =========================
+# SHEET MAPPING
+# =========================
+
+class SheetProducto(BaseModel):
+    marca: Optional[str] = None
+    producto: str
+    descripcion: Optional[str] = None
+    cantidad: Optional[int] = None
+    pvp: Optional[float] = None
+
+class ProductMappingCreate(BaseModel):
+    sheet_producto: str
+    sheet_descripcion: Optional[str] = None
+    sheet_marca: Optional[str] = None
+    product_id: int
+
+class ProductMappingResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    sheet_producto: str
+    sheet_descripcion: Optional[str] = None
+    sheet_marca: Optional[str] = None
+    product_id: int

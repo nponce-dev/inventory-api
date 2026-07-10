@@ -90,3 +90,14 @@ class ServicioItem(Base):
 
     servicio = relationship("Servicio", back_populates="items")
     product = relationship("Product")   
+
+class ProductMapping(Base):
+    __tablename__ = "product_mappings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    sheet_producto = Column(String, nullable=False)  # Nombre en el Sheet
+    sheet_descripcion = Column(String, nullable=True)  # Descripcion en el Sheet
+    sheet_marca = Column(String, nullable=True)  # Marca en el Sheet
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)  # Producto en el inventario
+
+    product = relationship("Product")

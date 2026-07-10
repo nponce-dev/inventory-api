@@ -255,3 +255,130 @@ def get_servicios_total(db: Session):
             if product and product.precio_venta:
                 costo_productos += product.precio_venta * item.quantity
     return {"ingresos": ingresos, "costo_productos": costo_productos} 
+
+# =========================
+# SHEET MAPPING
+# =========================
+
+SHEET_URL = "https://docs.google.com/spreadsheets/d/1iUhyvbul5kqIEFLhw4OPY_wO4ycmh9djPRFTiL6JA-Q/export?format=csv&gid=0"
+
+def get_sheet_productos():
+    import requests
+    import csv
+    import io
+
+    response = requests.get(SHEET_URL)
+    response.encoding = 'utf-8'
+    content = response.text
+
+    productos = []
+    marca_actual = None
+    reader = csv.DictReader(io.StringIO(content))
+
+    for row in reader:
+        marca = row.get('Marca', '').strip()
+        producto = row.get('Producto', '').strip()
+        descripcion = row.get('Descripcion', '').strip()
+        cantidad_raw = row.get('Cantidad', '').strip()
+        pvp_raw = row.get('PVP', '').strip()
+
+        # Saltar filas vacías
+        if not producto:
+            continue
+
+        # Actualizar marca actual si viene en la fila
+        if marca:
+            marca_actual = marca
+
+        # Limpiar PVP: sacar $, puntos de miles
+        pvp = None
+        if pvp_raw:
+            pvp_limpio = pvp_raw.replace('$', '').replace('.', '').replace(',', '.').strip()
+            try:
+                pvp = float(pvp_limpio)
+            except ValueError:
+                pvp = None
+
+        # Limpiar cantidad
+        cantidad = None
+        if cantidad_raw:
+            try:
+                cantidad = int(cantidad_raw)
+            except ValueError:
+                cantidad = None
+
+        productos.append({
+            'marca': marca_actual,
+            'producto': producto,
+            'descripcion': descripcion,
+            'cantidad': cantidad,
+            'pvp': pvp
+        })
+
+    return productos
+
+
+def get_mappings(db: Session):
+    return db.query(models.ProductMapping).all()
+
+
+def create_mapping(db: Session, mapping: schemas.ProductMappingCreate):
+    # Verificar que no exista ya un mapeo para ese producto del sheet
+    existing = db.query(models.ProductMapping).filter(
+        models.ProductMapping.sheet_producto == mapping.sheet_producto,
+        models.ProductMapping.sheet_descripcion == mapping.sheet_descripcion
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Ya existe un mapeo para este producto del sheet")
+
+    db_mapping = models.ProductMapping(**mapping.model_dump())
+    db.add(db_mapping)
+    db.commit()
+    db.refresh(db_mapping)
+    return db_mapping
+
+
+def delete_mapping(db: Session, mapping_id: int):
+    mapping = db.query(models.ProductMapping).filter(models.ProductMapping.id == mapping_id).first()
+    if not mapping:
+        raise HTTPException(status_code=404, detail="Mapeo no encontrado")
+    db.delete(mapping)
+    db.commit()
+    return {"message": "Mapeo eliminado"}
+
+
+def sync_sheet(db: Session):
+    productos_sheet = get_sheet_productos()
+    mappings = db.query(models.ProductMapping).all()
+
+    actualizados = 0
+    sin_mapeo = []
+    sin_pvp = []
+
+    for prod in productos_sheet:
+        # Buscar si tiene mapeo
+        mapping = next((m for m in mappings
+            if m.sheet_producto == prod['producto'] and
+            m.sheet_descripcion == prod['descripcion']), None)
+
+        if not mapping:
+            sin_mapeo.append(f"{prod['producto']} {prod['descripcion']}")
+            continue
+
+        if prod['pvp'] is None:
+            sin_pvp.append(f"{prod['producto']} {prod['descripcion']}")
+            continue
+
+        # Actualizar precio en el inventario
+        product = get_product_by_id(db, mapping.product_id)
+        if product:
+            product.precio_venta = prod['pvp']
+            actualizados += 1
+
+    db.commit()
+
+    return {
+        "actualizados": actualizados,
+        "sin_mapeo": sin_mapeo,
+        "sin_pvp": sin_pvp
+    }
