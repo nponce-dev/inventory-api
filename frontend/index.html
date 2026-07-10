@@ -261,6 +261,7 @@
     <button class="nav-btn" onclick="showSection('compras', this)">Registrar compra</button>
     <button class="nav-btn" onclick="showSection('descuentos', this)">Descuentos</button>
     <button class="nav-btn" onclick="showSection('servicios', this)">Servicios</button>
+    <button class="nav-btn" onclick="showSection('configuracion', this)">Configuración</button>
     <button class="nav-btn" onclick="showSection('contabilidad', this)">Contabilidad</button>
   </nav>
 
@@ -657,6 +658,78 @@
     </div>
   </div>
 </div>
+<!-- CONFIGURACIÓN -->
+<div class="section" id="sec-configuracion">
+  <div class="section-header">
+    <h2>Configuración</h2>
+    <p>Sincronización con Google Sheet y mapeo de productos</p>
+  </div>
+
+  <!-- Sincronizar -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <h3 style="font-size:15px;font-weight:500;margin-bottom:4px">Sincronizar precios desde el Sheet</h3>
+        <p style="font-size:13px;color:var(--muted)">Actualiza los precios de venta de los productos que tienen mapeo configurado</p>
+      </div>
+      <button class="btn btn-primary" onclick="syncSheet()">↺ Sincronizar ahora</button>
+    </div>
+    <div id="sync-result" style="display:none;margin-top:1rem;padding:12px;background:var(--bg);border-radius:8px;font-size:13px"></div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Mapeo -->
+  <div class="section-header">
+    <h2>Mapeo de productos</h2>
+    <p>Vinculá cada producto del Sheet con el producto correspondiente en el inventario</p>
+  </div>
+
+  <div class="card">
+    <div class="form-grid three">
+      <div class="form-group">
+        <label>Producto del Sheet</label>
+        <select id="map-sheet-producto" onchange="updateSheetInfo()">
+          <option value="">Seleccioná un producto del Sheet...</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Producto del inventario</label>
+        <select id="map-inv-producto">
+          <option value="">Seleccioná un producto del inventario...</option>
+        </select>
+      </div>
+      <div class="form-group" style="justify-content:flex-end">
+        <label>&nbsp;</label>
+        <button class="btn btn-primary" onclick="createMapping()">+ Agregar mapeo</button>
+      </div>
+    </div>
+    <div id="map-sheet-info" style="display:none;margin-top:8px;padding:8px 12px;background:var(--bg);border-radius:6px;font-size:12px;color:var(--muted)"></div>
+  </div>
+
+  <div class="card" style="margin-top:1rem">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:1rem">
+      <button class="btn btn-secondary" onclick="loadMappings()">↺ Actualizar</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Producto Sheet</th>
+            <th>Descripción Sheet</th>
+            <th>Marca</th>
+            <th>PVP Sheet</th>
+            <th>Producto Inventario</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="mappings-tbody">
+          <tr><td colspan="6" class="empty-state">Cargando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
   </main>
 </div>
 
@@ -920,6 +993,7 @@ async function deleteDiscount(id) {
     if (name === 'descuentos') loadDiscounts();
     if (name === 'contabilidad') { loadContabilidad(); showSubTab('ventas'); }
     if (name === 'servicios') { loadServicios(); loadProducts(); }
+    if (name === 'configuracion') { loadConfiguracion(); }
   }
 
   function toast(msg, type = 'success') {
@@ -1661,6 +1735,161 @@ async function deleteServicio(id) {
     if (res.ok) { toast('Servicio eliminado — stock restaurado'); loadServicios(); loadProducts(); }
     else { toast('Error al eliminar', 'error'); }
   } catch { toast('No se pudo conectar con la API', 'error'); }
+}
+
+// ── CONFIGURACIÓN / SHEET MAPPING ──
+let sheetProductos = [];
+
+async function loadConfiguracion() {
+  await Promise.all([loadSheetProductos(), loadMappings()]);
+  populateInvProductos();
+}
+
+async function loadSheetProductos() {
+  try {
+    const res = await fetch(API + '/sheet/productos', { headers: authHeaders() });
+    sheetProductos = await res.json();
+    const select = document.getElementById('map-sheet-producto');
+    select.innerHTML = '<option value="">Seleccioná un producto del Sheet...</option>';
+    sheetProductos.forEach((p, idx) => {
+      const label = `${p.marca ? p.marca + ' — ' : ''}${p.producto}${p.descripcion ? ' · ' + p.descripcion : ''}`;
+      const opt = document.createElement('option');
+      opt.value = idx;
+      opt.textContent = label;
+      select.appendChild(opt);
+    });
+  } catch {
+    toast('No se pudo cargar los productos del Sheet', 'error');
+  }
+}
+
+function populateInvProductos() {
+  const select = document.getElementById('map-inv-producto');
+  select.innerHTML = '<option value="">Seleccioná un producto del inventario...</option>';
+  allProducts.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = `${p.name} (${p.sku})`;
+    select.appendChild(opt);
+  });
+}
+
+function updateSheetInfo() {
+  const idx = document.getElementById('map-sheet-producto').value;
+  const infoBox = document.getElementById('map-sheet-info');
+  if (idx === '') { infoBox.style.display = 'none'; return; }
+  const p = sheetProductos[idx];
+  infoBox.style.display = 'block';
+  infoBox.innerHTML = `
+    <strong>Marca:</strong> ${p.marca || '—'} &nbsp;|&nbsp;
+    <strong>Producto:</strong> ${p.producto} &nbsp;|&nbsp;
+    <strong>Descripción:</strong> ${p.descripcion || '—'} &nbsp;|&nbsp;
+    <strong>PVP:</strong> ${p.pvp ? '$' + p.pvp.toFixed(2) : '—'}
+  `;
+}
+
+async function createMapping() {
+  const idx = document.getElementById('map-sheet-producto').value;
+  const product_id = document.getElementById('map-inv-producto').value;
+  if (idx === '') { toast('Seleccioná un producto del Sheet', 'error'); return; }
+  if (!product_id) { toast('Seleccioná un producto del inventario', 'error'); return; }
+  const p = sheetProductos[idx];
+  const body = {
+    sheet_producto: p.producto,
+    sheet_descripcion: p.descripcion || null,
+    sheet_marca: p.marca || null,
+    product_id: parseInt(product_id)
+  };
+  try {
+    const res = await fetch(API + '/sheet/mappings', {
+      method: 'POST', headers: authHeaders(),
+      body: JSON.stringify(body)
+    });
+    if (res.ok) {
+      toast('Mapeo guardado correctamente');
+      document.getElementById('map-sheet-producto').value = '';
+      document.getElementById('map-inv-producto').value = '';
+      document.getElementById('map-sheet-info').style.display = 'none';
+      loadMappings();
+    } else {
+      const err = await res.json();
+      toast(err.detail || 'Error al guardar', 'error');
+    }
+  } catch { toast('No se pudo conectar con la API', 'error'); }
+}
+
+async function loadMappings() {
+  try {
+    const [mappingsRes, productsRes] = await Promise.all([
+      fetch(API + '/sheet/mappings', { headers: authHeaders() }),
+      fetch(API + '/products/', { headers: authHeaders() })
+    ]);
+    const mappings = await mappingsRes.json();
+    const products = await productsRes.json();
+    const productMap = {};
+    products.forEach(p => productMap[p.id] = p.name);
+
+    // Cargar PVPs del sheet para mostrar
+    const pvpMap = {};
+    sheetProductos.forEach(p => {
+      const key = `${p.producto}||${p.descripcion || ''}`;
+      pvpMap[key] = p.pvp;
+    });
+
+    const tbody = document.getElementById('mappings-tbody');
+    if (!mappings.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No hay mapeos configurados todavía</td></tr>';
+      return;
+    }
+    tbody.innerHTML = mappings.map(m => {
+      const key = `${m.sheet_producto}||${m.sheet_descripcion || ''}`;
+      const pvp = pvpMap[key];
+      return `<tr>
+        <td><strong>${m.sheet_producto}</strong></td>
+        <td style="font-size:12px;color:var(--muted)">${m.sheet_descripcion || '—'}</td>
+        <td style="font-size:12px;color:var(--muted)">${m.sheet_marca || '—'}</td>
+        <td>${pvp ? '<strong style="color:var(--accent)">$' + pvp.toFixed(2) + '</strong>' : '<span style="color:var(--muted)">—</span>'}</td>
+        <td>${productMap[m.product_id] || '#' + m.product_id}</td>
+        <td><button class="btn btn-secondary" style="padding:4px 8px;font-size:12px;color:var(--danger);border-color:var(--danger)" onclick="deleteMapping(${m.id})">✕</button></td>
+      </tr>`;
+    }).join('');
+  } catch {
+    document.getElementById('mappings-tbody').innerHTML =
+      '<tr><td colspan="6" class="empty-state">No se pudo conectar con la API</td></tr>';
+  }
+}
+
+async function deleteMapping(id) {
+  if (!confirm('¿Eliminar este mapeo?')) return;
+  try {
+    const res = await fetch(API + '/sheet/mappings/' + id, { method: 'DELETE', headers: authHeaders() });
+    if (res.ok) { toast('Mapeo eliminado'); loadMappings(); }
+    else { toast('Error al eliminar', 'error'); }
+  } catch { toast('No se pudo conectar con la API', 'error'); }
+}
+
+async function syncSheet() {
+  const btn = document.querySelector('[onclick="syncSheet()"]');
+  btn.textContent = 'Sincronizando...';
+  btn.disabled = true;
+  try {
+    const res = await fetch(API + '/sheet/sync', { method: 'POST', headers: authHeaders() });
+    const data = await res.json();
+    const resultBox = document.getElementById('sync-result');
+    resultBox.style.display = 'block';
+    resultBox.innerHTML = `
+      <div style="color:var(--accent);font-weight:500;margin-bottom:6px">✓ Sincronización completada</div>
+      <div><strong>${data.actualizados}</strong> producto(s) actualizado(s)</div>
+      ${data.sin_mapeo.length ? `<div style="margin-top:6px;color:var(--muted)">Sin mapeo (${data.sin_mapeo.length}): ${data.sin_mapeo.slice(0,5).join(', ')}${data.sin_mapeo.length > 5 ? '...' : ''}</div>` : ''}
+      ${data.sin_pvp.length ? `<div style="color:var(--muted)">Sin PVP (${data.sin_pvp.length}): ${data.sin_pvp.slice(0,5).join(', ')}${data.sin_pvp.length > 5 ? '...' : ''}</div>` : ''}
+    `;
+    toast(`${data.actualizados} producto(s) actualizado(s)`);
+    loadProducts();
+  } catch { toast('No se pudo conectar con la API', 'error'); }
+  finally {
+    btn.textContent = '↺ Sincronizar ahora';
+    btn.disabled = false;
+  }
 }
 
 </script>
