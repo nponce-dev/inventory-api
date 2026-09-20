@@ -337,28 +337,56 @@
       </div>
     </div>
 
-    <!-- VENTA -->
-    <div class="section" id="sec-venta">
-      <div class="section-header">
-        <h2>Registrar venta</h2>
-        <p>El stock se descuenta automáticamente</p>
+<!-- VENTA -->
+<div class="section" id="sec-venta">
+  <div class="section-header">
+    <h2>Registrar venta</h2>
+    <p>Agregá productos al carrito y aplicá un descuento si corresponde</p>
+  </div>
+  <div class="card">
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Producto</label>
+        <input type="text" id="sale-search" placeholder="Escribí el nombre del producto..." oninput="filterSaleProducts()" autocomplete="off">
+        <div id="sale-suggestions" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;margin-top:4px;display:none;max-height:200px;overflow-y:auto;"></div>
+        <input type="hidden" id="sale-product-id">
+        <input type="hidden" id="sale-product-name">
+        <input type="hidden" id="sale-product-precio">
+        <input type="hidden" id="sale-sku">
       </div>
-      <div class="card">
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Producto</label>
-            <input type="text" id="sale-search" placeholder="Escribí el nombre del producto..." oninput="filterSaleProducts()" autocomplete="off">
-            <div id="sale-suggestions" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;margin-top:4px;display:none;max-height:200px;overflow-y:auto;"></div>
-            <input type="hidden" id="sale-sku">
-          </div>
-          <div class="form-group"><label>Cantidad vendida</label><input type="number" id="sale-qty" placeholder="1" min="1"></div>
-        </div>
-        <div class="form-footer">
-          <span style="font-size:12px;color:var(--muted)">La venta descuenta el stock en tiempo real</span>
-          <button class="btn btn-primary" onclick="registerSale()">Registrar venta</button>
-        </div>
+      <div class="form-group">
+        <label>Cantidad</label>
+        <input type="number" id="sale-qty" placeholder="1" min="1">
       </div>
     </div>
+    <div style="margin-top:10px;text-align:right">
+      <button class="btn btn-secondary" onclick="addSaleItem()">+ Agregar al carrito</button>
+    </div>
+
+    <div id="sale-items-list" class="purchase-items-list" style="display:none"></div>
+
+    <div id="sale-subtotal-box" style="display:none;margin-top:12px;padding:12px 14px;background:var(--bg);border-radius:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-size:13px;color:var(--muted)">Subtotal</span>
+        <span style="font-family:var(--mono);font-size:16px;font-weight:500" id="sale-subtotal">$0.00</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <span style="font-size:13px;color:var(--muted)">Descuento (%)</span>
+        <input type="number" id="sale-descuento" placeholder="0" min="0" max="100" step="0.1" oninput="updateSaleTotal()" style="width:80px;padding:6px 10px;font-size:13px">
+        <span style="font-size:13px;color:var(--muted)" id="sale-descuento-monto"></span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border);padding-top:8px">
+        <span style="font-size:14px;font-weight:500">Total</span>
+        <span style="font-family:var(--mono);font-size:20px;font-weight:500;color:var(--accent)" id="sale-total">$0.00</span>
+      </div>
+    </div>
+
+    <div class="form-footer">
+      <span style="font-size:12px;color:var(--muted)" id="sale-items-count">Ningún producto agregado</span>
+      <button class="btn btn-primary" onclick="registerSale()">Registrar venta</button>
+    </div>
+  </div>
+</div>
 
     <!-- COMPRAS -->
     <div class="section" id="sec-compras">
@@ -1161,93 +1189,139 @@ async function deleteDiscount(id) {
     } catch { toast('No se pudo conectar con la API', 'error'); }
   }
 
-  // ── VENTAS ──
-  function filterSaleProducts() {
-    const q = document.getElementById('sale-search').value.toLowerCase();
-    const box = document.getElementById('sale-suggestions');
-    document.getElementById('sale-sku').value = '';
-    if (!q) { box.style.display = 'none'; return; }
-    const matches = allProducts.filter(p =>
-      p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q)
-    ).slice(0, 8);
-    if (!matches.length) { box.style.display = 'none'; return; }
-    box.style.display = 'block';
-    box.innerHTML = matches.map(p => `
-      <div onclick="selectSaleProduct('${p.sku}', '${p.name}')"
-        style="padding:10px 12px;cursor:pointer;font-size:13px;border-bottom:0.5px solid var(--border);display:flex;justify-content:space-between;align-items:center"
-        onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
-        <span>${p.name}</span>
-        <span class="sku-tag">${p.sku}</span>
-      </div>
-    `).join('');
+ // ── VENTAS (CARRITO) ──
+let saleItems = [];
+
+function filterSaleProducts() {
+  const q = document.getElementById('sale-search').value.toLowerCase();
+  const box = document.getElementById('sale-suggestions');
+  document.getElementById('sale-product-id').value = '';
+  if (!q) { box.style.display = 'none'; return; }
+  const matches = allProducts.filter(p =>
+    p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q)
+  ).slice(0, 8);
+  if (!matches.length) { box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  box.innerHTML = matches.map(p => `
+    <div onclick="selectSaleProduct(${p.id}, '${p.name}', '${p.sku}', ${p.precio_venta || 0})"
+      style="padding:10px 12px;cursor:pointer;font-size:13px;border-bottom:0.5px solid var(--border);display:flex;justify-content:space-between;align-items:center"
+      onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+      <span>${p.name}</span>
+      <span class="sku-tag">${p.sku} · $${p.precio_venta != null ? p.precio_venta.toFixed(2) : '—'}</span>
+    </div>
+  `).join('');
+}
+
+function selectSaleProduct(id, name, sku, precio) {
+  document.getElementById('sale-product-id').value = id;
+  document.getElementById('sale-product-name').value = name;
+  document.getElementById('sale-product-precio').value = precio;
+  document.getElementById('sale-sku').value = sku;
+  document.getElementById('sale-search').value = name;
+  document.getElementById('sale-suggestions').style.display = 'none';
+}
+
+function addSaleItem() {
+  const product_id = parseInt(document.getElementById('sale-product-id').value);
+  const name = document.getElementById('sale-product-name').value;
+  const precio = parseFloat(document.getElementById('sale-product-precio').value) || 0;
+  const quantity = parseInt(document.getElementById('sale-qty').value);
+
+  if (!product_id) { toast('Seleccioná un producto de la lista', 'error'); return; }
+  if (isNaN(quantity) || quantity < 1) { toast('Ingresá una cantidad válida', 'error'); return; }
+
+  const existing = saleItems.find(i => i.product_id === product_id);
+  if (existing) {
+    existing.quantity += quantity;
+  } else {
+    saleItems.push({ product_id, name, precio, quantity });
   }
 
-  function selectSaleProduct(sku, name) {
-    document.getElementById('sale-sku').value = sku;
-    document.getElementById('sale-search').value = name;
-    document.getElementById('sale-suggestions').style.display = 'none';
+  renderSaleItems();
+  document.getElementById('sale-search').value = '';
+  document.getElementById('sale-product-id').value = '';
+  document.getElementById('sale-product-name').value = '';
+  document.getElementById('sale-product-precio').value = '';
+  document.getElementById('sale-qty').value = '';
+}
+
+function renderSaleItems() {
+  const list = document.getElementById('sale-items-list');
+  const counter = document.getElementById('sale-items-count');
+  const subtotalBox = document.getElementById('sale-subtotal-box');
+
+  if (!saleItems.length) {
+    list.style.display = 'none';
+    subtotalBox.style.display = 'none';
+    counter.textContent = 'Ningún producto agregado';
+    return;
   }
+
+  list.style.display = 'flex';
+  subtotalBox.style.display = 'block';
+  counter.textContent = `${saleItems.length} producto(s) en el carrito`;
+
+  list.innerHTML = saleItems.map((item, idx) => `
+    <div class="purchase-item-row">
+      <span class="item-name">${item.name}</span>
+      <span class="item-qty">${item.quantity} u. · $${(item.precio * item.quantity).toFixed(2)}</span>
+      <button class="btn btn-danger btn-remove" onclick="removeSaleItem(${idx})">✕</button>
+    </div>
+  `).join('');
+
+  updateSaleTotal();
+}
+
+function removeSaleItem(idx) {
+  saleItems.splice(idx, 1);
+  renderSaleItems();
+}
+
+function updateSaleTotal() {
+  const subtotal = saleItems.reduce((acc, i) => acc + i.precio * i.quantity, 0);
+  const descuento = parseFloat(document.getElementById('sale-descuento').value) || 0;
+  const descuentoMonto = subtotal * (descuento / 100);
+  const total = subtotal - descuentoMonto;
+
+  document.getElementById('sale-subtotal').textContent = `$${subtotal.toFixed(2)}`;
+  document.getElementById('sale-total').textContent = `$${total.toFixed(2)}`;
+  document.getElementById('sale-descuento-monto').textContent =
+    descuentoMonto > 0 ? `-$${descuentoMonto.toFixed(2)}` : '';
+}
 
 async function registerSale() {
-  const sku = document.getElementById('sale-sku').value.trim();
-  const quantity = parseInt(document.getElementById('sale-qty').value);
-  if (!sku || isNaN(quantity) || quantity < 1) { toast('Completá todos los campos', 'error'); return; }
+  if (!saleItems.length) { toast('Agregá al menos un producto al carrito', 'error'); return; }
 
-  const product = allProducts.find(p => p.sku === sku);
+  const descuento_porcentaje = parseFloat(document.getElementById('sale-descuento').value) || 0;
 
-  let precio_unitario_real = null;
-
-  try {
-    const discRes = await fetch(API + '/discounts/', { headers: authHeaders() });
-    const discounts = await discRes.json();
-    
-    console.log('Descuentos encontrados:', discounts);
-    console.log('Producto:', product);
-    console.log('Cantidad:', quantity);
-    
-    const coincidencias = discounts.filter(d =>
-      d.items.length === 1 &&
-      d.items[0].product_id === product?.id &&
-      d.items[0].quantity === quantity
-    );
-    
-    console.log('Coincidencias:', coincidencias);
-    
-    if (coincidencias.length > 0) {
-      const d = coincidencias[0];
-      const precioNormal = product?.precio_venta ? product.precio_venta * quantity : null;
-      const msg = precioNormal
-        ? `¿Aplicar descuento "${d.name}"?\nPrecio normal: $${precioNormal.toFixed(2)}\nPrecio combo: $${d.precio_descuento.toFixed(2)}`
-        : `¿Aplicar descuento "${d.name}"?\nPrecio combo: $${d.precio_descuento.toFixed(2)}`;
-      if (confirm(msg)) {
-        precio_unitario_real = d.precio_descuento / quantity;
-        console.log('Precio unitario real:', precio_unitario_real);
-      }
-    }
-  } catch (e) { console.error('Error descuentos:', e); }
-
-  const body = { sku, quantity };
-  if (precio_unitario_real !== null) body.precio_unitario_real = precio_unitario_real;
-  
-  console.log('Body a enviar:', body);
+  const body = {
+    items: saleItems.map(i => ({
+      product_id: i.product_id,
+      quantity: i.quantity,
+      precio_unitario: i.precio
+    })),
+    descuento_porcentaje
+  };
 
   try {
-    const res = await fetch(API + '/sales/', {
+    const res = await fetch(API + '/ventas/', {
       method: 'POST', headers: authHeaders(),
       body: JSON.stringify(body)
     });
     if (res.ok) {
-      toast(precio_unitario_real !== null ? 'Venta registrada con descuento aplicado' : 'Venta registrada — stock actualizado');
-      document.getElementById('sale-sku').value = '';
+      toast('Venta registrada correctamente');
+      saleItems = [];
+      renderSaleItems();
       document.getElementById('sale-search').value = '';
       document.getElementById('sale-qty').value = '';
+      document.getElementById('sale-descuento').value = '';
+      loadProducts();
     } else {
       const err = await res.json();
       toast(err.detail || 'Error al registrar', 'error');
     }
   } catch { toast('No se pudo conectar con la API', 'error'); }
 }
-
   // ── COMPRAS ──
   function filterBuyProducts() {
     const q = document.getElementById('buy-search').value.toLowerCase();
