@@ -158,3 +158,93 @@ class ProductMappingResponse(BaseModel):
     sheet_descripcion: Optional[str] = None
     sheet_marca: Optional[str] = None
     product_id: int
+
+# =========================
+# VENTA CARRITO
+# =========================
+
+class VentaItemCreate(BaseModel):
+    product_id: int
+    quantity: int = Field(gt=0)
+    precio_unitario: float
+
+class VentaCreate(BaseModel):
+    items: List[VentaItemCreate]
+    descuento_porcentaje: Optional[float] = Field(default=0, ge=0, le=100)
+
+class VentaItemResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    product_id: int
+    quantity: int
+    precio_unitario: float
+
+class VentaResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    subtotal: float
+    descuento_porcentaje: Optional[float] = 0
+    descuento_monto: Optional[float] = 0
+    total: float
+    fecha: Optional[datetime] = None
+    items: List[VentaItemResponse]
+
+# =========================
+# VENTA CARRITO
+# =========================
+
+class VentaItemCreate(BaseModel):
+    product_id: int
+    quantity: int = Field(gt=0)
+    precio_unitario: float
+
+class VentaCreate(BaseModel):
+    items: List[VentaItemCreate]
+    descuento_porcentaje: Optional[float] = Field(default=0, ge=0, le=100)
+
+class VentaItemResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    product_id: int
+    quantity: int
+    precio_unitario: float
+
+class VentaResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    subtotal: float
+    descuento_porcentaje: Optional[float] = 0
+    descuento_monto: Optional[float] = 0
+    total: float
+    fecha: Optional[datetime] = None
+    items: List[VentaItemResponse]
+
+# =========================
+# VENTA CARRITO
+# =========================
+
+class VentaItemCreate(BaseModel):
+    product_id: int
+    quantity: int = Field(gt=0)
+    precio_unitario: float
+
+class VentaCreate(BaseModel):
+    items: List[VentaItemCreate]
+    descuento_porcentaje: Optional[float] = Field(default=0, ge=0, le=100)
+
+class VentaItemResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    product_id: int
+    quantity: int
+    precio_unitario: float
+
+class VentaResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    subtotal: float
+    descuento_porcentaje: Optional[float] = 0
+    descuento_monto: Optional[float] = 0
+    total: float
+    fecha: Optional[datetime] = None
+    items: List[VentaItemResponse]
